@@ -99,36 +99,8 @@ func (cs *EnvironmentServer) RunStartOfIteration(iteration int) {
 	// start team forming
 	cs.StartAgentTeamForming()
 
-	// take votes at team level and allocate Strategy.
-	cs.AllocateAoAs()
 }
 
-<<<<<<< HEAD
-// Allocate AoA based on team votes;
-// for each member in team, count vote for AoA and then take majority (?) vote
-// assign majority vote back to team struct (team.Strategy)
-func (cs *EnvironmentServer) AllocateAoAs() {
-	// Iterate over each team
-	for _, team := range cs.teams {
-		// ranking cache for each team.
-		var voteSum = []int{0, 0, 0, 0}
-		for _, agent := range team.Agents {
-			if cs.IsAgentDead(agent) {
-				continue
-			}
-			for aoa, vote := range cs.GetAgentMap()[agent].GetAoARanking() {
-				voteSum[aoa] += vote
-			}
-		}
-
-		// Determine the preferred AoA based on the majority vote
-		currentMax := 0
-		preference := 0
-		for aoa, voteCount := range voteSum {
-			if voteCount > currentMax {
-				currentMax = voteCount
-				preference = aoa
-=======
 // Infers pairwise outcomes from rankings
 // Alternative would be needing a mapping of 15 individual pairwise comparisons
 func runCopelandVote(team *common.Team, cs *EnvironmentServer) []int {
@@ -237,7 +209,6 @@ func runBordaVote(team *common.Team, aoaCandidates []int, cs *EnvironmentServer)
 				points := n - vote - 1
 				voteSum[aoa] += points
 				fmt.Printf("Agent %s votes for AoA %d with %d point\n", agent, aoa, points)
->>>>>>> 7e3a4ae (Borda + Copeland Voting)
 			}
 		}
 	}
@@ -263,11 +234,6 @@ func runBordaVote(team *common.Team, aoaCandidates []int, cs *EnvironmentServer)
 			filtered = append(filtered, candidate)
 		}
 
-<<<<<<< HEAD
-		// Update the team's strategy
-		team.TeamAoA = cs.aoaMenu[preference]
-		cs.teams[team.TeamID] = team
-=======
 		fmt.Printf("Processing candidate %d with score %d\n", candidate, score) // Debugging print
 	}
 
@@ -298,7 +264,6 @@ func (cs *EnvironmentServer) AllocateAoAs() {
 			fmt.Printf("Team %v has AoA: %v\n", team.TeamID, winners[randomI])
 
 		}
->>>>>>> 7e3a4ae (Borda + Copeland Voting)
 	}
 }
 
