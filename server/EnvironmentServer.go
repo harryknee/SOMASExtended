@@ -99,6 +99,9 @@ func (cs *EnvironmentServer) RunStartOfIteration(iteration int) {
 	// start team forming
 	cs.StartAgentTeamForming()
 
+	time.Sleep(2 * time.Second)
+	// take votes at team level and allocate Strategy.
+	cs.AllocateAoAs()
 }
 
 // Infers pairwise outcomes from rankings
@@ -246,10 +249,10 @@ func runBordaVote(team *common.Team, aoaCandidates []int, cs *EnvironmentServer)
 
 func (cs *EnvironmentServer) AllocateAoAs() {
 	for _, team := range cs.teams {
-		winners := runCopelandVote(&team, cs)
+		winners := runCopelandVote(team, cs)
 		if len(winners) > 1 {
 			fmt.Println("Multiple winners detected. Running Borda Vote.")
-			winners = runBordaVote(&team, winners, cs)
+			winners = runBordaVote(team, winners, cs)
 		}
 		// Select random AoA if still tied, else select 'winner'
 		if len(winners) > 0 {
