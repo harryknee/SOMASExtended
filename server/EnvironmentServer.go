@@ -16,24 +16,29 @@ import (
 type EnvironmentServer struct {
 	*server.BaseServer[common.IExtendedAgent]
 
-	teamsMutex    		sync.RWMutex
-	agentInfoList 		[]common.ExposedAgentInfo
-	teams         		map[uuid.UUID]common.Team
+	teamsMutex    sync.RWMutex
+	agentInfoList []common.ExposedAgentInfo
+	teams         map[uuid.UUID]common.Team
 
 	roundScoreThreshold int
 	deadAgents          []common.IExtendedAgent
 
-
 	// set of options for team strategies (agents rank these options)
-	aoaMenu  			[]*common.ArticlesOfAssociation
+	aoaMenu []*common.ArticlesOfAssociation
 }
 
 // overrides that requires implementation
 func (cs *EnvironmentServer) RunTurn(i, j int) {
 	fmt.Printf("\nIteration %v, Turn %v, current agent count: %v\n", i, j, len(cs.GetAgentMap()))
+	if j == 1 {
+		// take votes at team level and allocate Strategy.
+		time.Sleep(10 * time.Second)
 
+		cs.AllocateAoAs()
+	}
 	if j == 0 {
 		cs.StartAgentTeamForming()
+
 	} else { // debug roll dice for agents
 		for _, agent := range cs.GetAgentMap() {
 			if !cs.IsAgentDead(agent.GetID()) { // only agents that are alive can roll dice
@@ -63,35 +68,171 @@ func (cs *EnvironmentServer) RunStartOfIteration(iteration int) {
 	cs.CreateNewRoundScoreThreshold()
 	// start team forming
 
-	// take votes at team level and allocate Strategy.
-	cs.AllocateAoAs()
 }
 
-// Allocate AoA based on team votes;
-// for each member in team, count vote for AoA and then take majority (?) vote
-// assign majority vote back to team struct (team.Strategy)
-func (cs *EnvironmentServer) AllocateAoAs(){
-	// once teams assigned, gather AoA votes from each agent.
-	for _, team := range cs.teams {
-		// ranking cache for each team.
-		var voteSum = []int{0,0,0,0}
-		for _, agent := range team.Agents {
-			for aoa, vote := range cs.GetAgentMap()[agent].GetAoARanking() {
-				voteSum[aoa] += vote
+// Infers pairwise outcomes from rankings
+// Alternative would be needing a mapping of 15 individual pairwise comparisons
+func runCopelandVote(team *common.Team, cs *EnvironmentServer) []int {
+
+	pairwiseWins := make(map[string]int)
+	copelandScores := make(map[byte]float64)
+
+	fmt.Printf("Starting Copeland Vote for Team %s with %d members.\n", team.TeamID, len(team.Agents))
+	// Loop through each agent in the team
+
+	for _, agent := range team.Agents {
+
+		agentRanking := cs.GetAgentMap()[agent].GetAoARanking()
+
+		fmt.Printf("Agent %s has the following AoA rankings:\n", agent)
+		fmt.Println(agentRanking)
+
+		// Loop through each pair of ranked candidates and perform pairwise comparison
+		for i := 0; i < len(agentRanking); i++ {
+			for j := i + 1; j < len(agentRanking); j++ {
+				if agentRanking[i] < agentRanking[j] {
+
+					pair := []int{agentRanking[i], agentRanking[j]}
+
+					pairKey := fmt.Sprintf("%d%d", pair[0], pair[1])
+
+					fmt.Printf("Agent %s: Comparing candidates %d and %d. Winner: %d\n", agent, pair[0], pair[1], pair[0])
+
+					pairwiseWins[pairKey]++
+				} else {
+
+					pair := []int{agentRanking[j], agentRanking[i]}
+
+					pairKey := fmt.Sprintf("%d%d", pair[0], pair[1])
+
+					fmt.Printf("Agent %s: Comparing candidates %d and %d. Winner: %d\n", agent, pair[1], pair[0], pair[1])
+
+					pairwiseWins[pairKey] -= 1
+				}
+
 			}
 		}
-		// logic to check largest
-		var currentMax = 0
-		var preference = 0
-		for aoa, voteCount := range voteSum{
-			if voteCount > currentMax{
-				currentMax = voteCount
-				preference = aoa
+	}
+
+	fmt.Println(pairwiseWins)
+	for pair, score := range pairwiseWins {
+		// Subtract ASCII value of 0
+		candidate1 := pair[0] - 48
+		candidate2 := pair[1] - 48
+
+		fmt.Printf("Processing pair %s (candidate 1: %d, candidate 2: %d), score: %d\n", pair, candidate1, candidate2, score)
+
+		if score > 0 {
+			copelandScores[candidate1] += 1
+			fmt.Printf("Candidate %d wins, Copeland score updated: %v\n", candidate1, copelandScores[candidate1])
+
+		} else if score < 0 {
+			copelandScores[candidate2] += 1
+			fmt.Printf("Candidate %d wins, Copeland score updated: %v\n", candidate2, copelandScores[candidate2])
+		} else {
+			copelandScores[candidate1] += 0.5
+			copelandScores[candidate2] += 0.5
+			fmt.Printf("It's a tie! Copeland scores updated: %v, %v\n", copelandScores[candidate1], copelandScores[candidate2])
+
+		}
+	}
+	fmt.Println(copelandScores)
+
+	var maxScore float64
+	var maxCandidates []int
+	for key, score := range copelandScores {
+		candidate := int(key)
+		if score > maxScore {
+			maxScore = score
+			maxCandidates = []int{candidate}
+		} else if score == maxScore {
+			maxCandidates = append(maxCandidates, candidate)
+		}
+	}
+
+	fmt.Printf("\nWinning candidates for Team %s: %v\n", team.TeamID, maxCandidates)
+
+	return maxCandidates
+}
+
+// Aggregates scores for candidates returns all candidates who have the highest score
+func runBordaVote(team *common.Team, aoaCandidates []int, cs *EnvironmentServer) []int {
+
+	aoaCandidatesSet := make(map[int]struct{})
+	for _, candidate := range aoaCandidates {
+		aoaCandidatesSet[candidate] = struct{}{}
+	}
+
+	voteSum := make(map[int]int) // key = AoA candidate, value = total votes
+	n := len(aoaCandidates)      // Could explicitly do n := 6, right now each points allocation is off by len(all_candidates) - len(aoaCandidates)
+	for _, agent := range team.Agents {
+
+		agentRanking := cs.GetAgentMap()[agent].GetAoARanking()
+		fmt.Printf("Agent %s has the following AoA rankings:\n", agent)
+		fmt.Println((agentRanking))
+
+		// Check if the current AoA is a candidate
+		// May be better to loop on candidates instead
+		for vote, aoa := range agentRanking {
+			if _, exists := aoaCandidatesSet[aoa]; exists {
+				points := n - vote - 1
+				voteSum[aoa] += points
+				fmt.Printf("Agent %s votes for AoA %d with %d point\n", agent, aoa, points)
 			}
+		}
+	}
+
+	fmt.Println("\nCandidates scores:")
+	fmt.Println(voteSum)
+	var filtered []int
+
+	if len(voteSum) == 1 {
+		return filtered
+	}
+
+	// Initialize maxVotes to the first candidate's score
+	maxVotes := voteSum[aoaCandidates[0]]
+
+	// Find the max score and filter candidates with the max score in one pass
+	for candidate, score := range voteSum {
+		if score > maxVotes {
+			maxVotes = score
+			// Reset filtered list with the new max score
+			filtered = []int{candidate}
+		} else if score == maxVotes {
+			filtered = append(filtered, candidate)
 		}
 
-		// update teams strategy. 
-		team.TeamAoA = cs.aoaMenu[preference]
+		fmt.Printf("Processing candidate %d with score %d\n", candidate, score) // Debugging print
+	}
+
+	// Remove candidates below a threshold (check if there are ties)
+	fmt.Println("\nFiltered candidates after tie removal:")
+	fmt.Println(filtered)
+
+	return filtered
+}
+
+func (cs *EnvironmentServer) AllocateAoAs() {
+	for _, team := range cs.teams {
+		winners := runCopelandVote(&team, cs)
+		if len(winners) > 1 {
+			fmt.Println("Multiple winners detected. Running Borda Vote.")
+			winners = runBordaVote(&team, winners, cs)
+		}
+		// Select random AoA if still tied, else select 'winner'
+		if len(winners) > 0 {
+
+			// Create a random number generator with a seed based on current time
+			r := rand.New(rand.NewSource(time.Now().UnixNano()))
+			// Generate random index
+			randomI := r.Intn(len(winners))
+
+			team.TeamAoA = cs.aoaMenu[winners[randomI]]
+
+			fmt.Printf("Team %v has AoA: %v\n", team.TeamID, winners[randomI])
+
+		}
 	}
 }
 
@@ -124,7 +265,11 @@ func MakeEnvServer(numAgent int, iterations int, turns int, maxDuration time.Dur
 	for i := 0; i < numAgent; i++ {
 		base_agent := agents.GetBaseAgents(serv, agentConfig)
 		serv.AddAgent(base_agent)
-
+		serv.AddAgent(base_agent)
+		base_agent1 := agents.GetBaseAgents1(serv, agentConfig)
+		serv.AddAgent(base_agent1)
+		base_agent2 := agents.GetBaseAgents2(serv, agentConfig)
+		serv.AddAgent(base_agent2)
 		// TEAM 1
 		// TEAM 2
 		// TEAM 3

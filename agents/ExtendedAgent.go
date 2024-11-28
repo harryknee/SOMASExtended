@@ -47,6 +47,36 @@ func GetBaseAgents(funcs agent.IExposedServerFunctions[common.IExtendedAgent], c
 	}
 }
 
+func GetBaseAgents1(funcs agent.IExposedServerFunctions[common.IExtendedAgent], configParam AgentConfig) *ExtendedAgent {
+	return &ExtendedAgent{
+		BaseAgent:    agent.CreateBaseAgent(funcs),
+		server:       funcs.(common.IServer), // Type assert the server functions to IServer interface
+		score:        configParam.InitScore,
+		verboseLevel: configParam.VerboseLevel,
+		AoARanking:   []int{0, 1, 2, 3},
+	}
+}
+
+func GetBaseAgents2(funcs agent.IExposedServerFunctions[common.IExtendedAgent], configParam AgentConfig) *ExtendedAgent {
+	return &ExtendedAgent{
+		BaseAgent:    agent.CreateBaseAgent(funcs),
+		server:       funcs.(common.IServer), // Type assert the server functions to IServer interface
+		score:        configParam.InitScore,
+		verboseLevel: configParam.VerboseLevel,
+		AoARanking:   []int{1, 2, 0, 3},
+	}
+}
+
+func GetBaseAgents3(funcs agent.IExposedServerFunctions[common.IExtendedAgent], configParam AgentConfig) *ExtendedAgent {
+	return &ExtendedAgent{
+		BaseAgent:    agent.CreateBaseAgent(funcs),
+		server:       funcs.(common.IServer), // Type assert the server functions to IServer interface
+		score:        configParam.InitScore,
+		verboseLevel: configParam.VerboseLevel,
+		AoARanking:   []int{2, 3, 1, 0},
+	}
+}
+
 // ----------------------- Interface implementation -----------------------
 
 // Getter
