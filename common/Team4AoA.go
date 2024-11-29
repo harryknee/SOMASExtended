@@ -1,81 +1,44 @@
 package common
 
-/*
-Team 4 AoA: The Adventurer’s Guild
-In the world of fantasy, the adventurers are a motley band of brave souls — warriors, mages,
-rogues, and all united by a thirst for glory, treasure, and the thril of delving into the
-unknown, despite their clashing motives and pasts.
-
-There’s one peaceful hove for all the adventurers --- The Adventurer’s Guild!
-The rules of theguild are simple:
-
-⚫ If you are weak, take care of yourselves. If you are strong, it's up to you empathise and help others.
-⚫ The guild won’t feed you for doing nothing, you must rely on your own hands.
-⚫ Don’t be a cheat, anyone can spot you, you won’t make it out the guild grounds alive.
-
-Rules:
-Expected Contribution: 2 (Basic membership fee for the guild)
-Expected Withdrawal: 1 (Some Food and Wine on the house)
-Audit Cost: 1 (Anyone can raise a concern)
-Audit Punishment: 100000000000 (The guild will gladly take your noble donation)
-
-
-We incentivise everyone to play safe and take care of themselves, at the end of the day, if you
-were too reckless and died to some beast in the forest, it's not our problem. Adventurers
-come and go, only the careful ones remain in the world.
-
-
--- Contribution Rules:
-If you ran back from the deadly battle and lost all your stuff, fine, don’t donate.
-Otherwise, at least pay the little drink money at the tavern.
-If you are feeling generous today and want to help your buddies, please donate more.
-
--- Withdrawal Rules:
-You can take a little bit from the pot (1), that’s fine.
-But if you want to take more than expected, you will need a majority vote from everyone in
-the group of people who declared to have contributed more than expected. (Their vote is
-weighted by total declared contribution).
-
-
--- Audit Cost: (Audit can happen at any time not occupied by business)
-If you find someone doing something fishy at the corner, you can chuck the nearest drink jug
-at him, just need to pay the jug money (1). You can think of the audition vote as a massive pub
-brawl. Then people choose sides, the side with most headcount wins.
-If you initiated the audition, and you lose by headcount, you need to pay everyone on their
-team a drink (1). If you win, the truth spell is cast on the suspect. If you convicted a crime,
-audited someone else as an accomplice, but lost the headcount vote, you are exiled.
-
-
--- Audit Punishment:
-If there is indeed a crime convicted, we allow the poor criminal caught to do the following:
-1. He can make up an excuse, people vote for the excuse. If people forgive him, he gets
-   to keep his stuff. If not, he donates all his gold to the guild and rolls out the door.
-2. He can audit another accomplice, if the accomplice is also guilty (if the previous
-   headcount vote succeeds), then he is not exiled but loses all his money to the common pool.
-   If not, he is exiled.
-
-If there is no crime convicted by the suspect, the common pool pays him a drink (1).
-
-Additional Flavors:
-Bribing:
-During the voting process, you can offer someone some money to cast the same vote as you
-do. If they accept, after voting, if indeed the same vote is cast, the transaction is complete.
-*/
-
 import (
+	"sort"
+
 	"github.com/google/uuid"
 )
 
+// A bit messy right now will clean up soon and add detailed and clear description of how our AoA works.
+
 type Team4 struct {
 	Adventurers map[uuid.UUID]struct {
-		Contribution int
-		Rank         string
+		Rank               string
+		ExpectedWithdrawal int
 	}
 	AuditMap map[uuid.UUID][]int
 }
 
-// Use this to increment contributions for rank raises
+func (t *Team4) SetRankUp(rankUpVoteMap map[uuid.UUID]map[uuid.UUID]int) {
+	approvalCounts := make(map[uuid.UUID]int)
+
+	for _, voteMap := range rankUpVoteMap {
+		for votedForID, vote := range voteMap {
+			if vote == 1 {
+				approvalCounts[votedForID]++
+			}
+		}
+	}
+	for agentID, approvalCount := range approvalCounts {
+		threshold := t.GetRankUpThreshold()
+		if approvalCount >= threshold {
+			// If the agent has enough approvals, rank them up
+			t.RankUp(agentID)
+		}
+	}
+}
+
+// Use this to increment contributions for rank raises and have agents declare what they want to withdraw
 func (t *Team4) SetContributionAuditResult(agentId uuid.UUID, agentScore int, agentActualContribution int, agentStatedContribution int) {
+
+	// Increment Contributions
 
 	// Check if adventurer in Team4 struct
 	adventurer, exists := t.Adventurers[agentId]
@@ -83,22 +46,17 @@ func (t *Team4) SetContributionAuditResult(agentId uuid.UUID, agentScore int, ag
 		// If the adventurer isn't in the Team4 struct
 		// add agent with a starting contribution of 0
 		adventurer = struct {
-			Contribution int
-			Rank         string
+			Rank               string
+			ExpectedWithdrawal int
 		}{
-			Contribution: 0,
-			Rank:         "No Rank",
+			Rank:               "No Rank",
+			ExpectedWithdrawal: 1,
 		}
 	}
 
-	// Increment the adventurer's rank from the previous turn
-	adventurer.Rank = t.GetRank(adventurer.Contribution)
-
-	// Increment the adventurer's contribution by the STATED contribution
-	adventurer.Contribution += agentStatedContribution
-
 	// Update the adventurers contribution in the map in the map
 	t.Adventurers[agentId] = adventurer
+
 }
 
 func (t *Team4) GetExpectedContribution(agentId uuid.UUID, agentScore int) int {
@@ -107,27 +65,72 @@ func (t *Team4) GetExpectedContribution(agentId uuid.UUID, agentScore int) int {
 
 // Can take more than this and 'lie'
 func (t *Team4) GetExpectedWithdrawal(agentId uuid.UUID) int {
+	adventurer, exists := t.Adventurers[agentId]
+	if !exists {
+		return 1
+	}
 
-	return 1
+	return adventurer.ExpectedWithdrawal
+}
+
+func (t *Team4) RunWithdrawalVote(proposedWithdrawalMap map[uuid.UUID]int, withdrawalVoteMap map[uuid.UUID]map[uuid.UUID]int) {
+	agentVoteWeightMap := make(map[uuid.UUID]int)
+
+	for voterID, voteMap := range withdrawalVoteMap {
+		// Get the agent's rank to determine their vote weight
+		voter := t.Adventurers[voterID]
+		voteWeight := t.GetVoteWeight(voter.Rank)
+
+		for votedForID, vote := range voteMap {
+			if vote == 1 {
+				agentVoteWeightMap[votedForID] += voteWeight
+			}
+		}
+	}
+
+	// Get threshold for if their proposed withdrawal is accepted
+	threshold := t.GetVoteThreshold()
+
+	for agentID, totalVoteWeight := range agentVoteWeightMap {
+		if totalVoteWeight >= threshold {
+			proposedWithdrawal, exists := proposedWithdrawalMap[agentID]
+			if exists {
+
+				// Update the agent's expected withdrawal if their vote weight meets the threshold
+				adventurer := t.Adventurers[agentID]
+				adventurer.ExpectedWithdrawal = proposedWithdrawal
+				// Update the agent in the Adventurers map
+				t.Adventurers[agentID] = adventurer
+			}
+		}
+	}
 }
 
 func (t *Team4) GetAuditCost(commonPool int) int {
-
 	return 1
 }
 
-// Calculates voting threshold based off of number of adventurers
 func (t *Team4) GetVoteThreshold() int {
 	totalAdventurers := len(t.Adventurers)
+
+	threshold := totalAdventurers * 70 / 100
+
+	return threshold
+}
+
+func (t *Team4) GetRankUpThreshold() int {
+	totalAdventurers := len(t.Adventurers)
+
 	threshold := totalAdventurers / 2
 
 	return threshold
 }
 
+// Will change this since we want it return a slice of AgentIds, takes in different input as well
 func (t *Team4) GetVoteResult(votes []Vote) *uuid.UUID {
 	voteMap := make(map[uuid.UUID]int)
 	for _, vote := range votes {
-		if vote.IsVote {
+		if vote.IsVote >= 1 {
 
 			// Get the rank of the voter
 			voter, exists := t.Adventurers[vote.VoterID]
@@ -157,27 +160,64 @@ func (t *Team4) GetVoteResult(votes []Vote) *uuid.UUID {
 	return &uuid.Nil
 }
 
-func (t *Team4) GetRank(contribution int) string {
-	switch {
-	case contribution >= 10000:
-		return "SSS"
-	case contribution >= 64:
-		return "S"
-	case contribution >= 32:
-		return "A"
-	case contribution >= 16:
-		return "B"
-	case contribution >= 8:
-		return "C"
-	case contribution >= 4:
-		return "D"
-	case contribution >= 2:
-		return "E"
-	case contribution >= 1:
-		return "F"
-	default:
-		return "No Rank"
+// GetWithdrawalOrder orders adventurers based on their vote weight (highest first).
+func (t *Team4) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
+	type agentWithWeight struct {
+		ID     uuid.UUID
+		Weight int
 	}
+
+	// Create a slice to store agent IDs along with their vote weight
+	agentsWithWeight := make([]agentWithWeight, len(agentIDs))
+	for i, id := range agentIDs {
+		// Retrieve the adventurer's rank and calculate their vote weight
+		weight := t.GetVoteWeight(t.Adventurers[id].Rank)
+		agentsWithWeight[i] = agentWithWeight{
+			ID:     id,
+			Weight: weight,
+		}
+	}
+
+	// Sort the slice by vote weight in descending order
+	sort.Slice(agentsWithWeight, func(i, j int) bool {
+		return agentsWithWeight[i].Weight > agentsWithWeight[j].Weight
+	})
+
+	// Extract and return the ordered agent IDs
+	orderedIDs := make([]uuid.UUID, len(agentIDs))
+	for i, aw := range agentsWithWeight {
+		orderedIDs[i] = aw.ID
+	}
+
+	return orderedIDs
+}
+
+func (t *Team4) RankUp(agentID uuid.UUID) {
+	adventurer, exists := t.Adventurers[agentID]
+	if !exists {
+		return
+	}
+	switch adventurer.Rank {
+	case "F":
+		adventurer.Rank = "E"
+	case "E":
+		adventurer.Rank = "D"
+	case "D":
+		adventurer.Rank = "C"
+	case "C":
+		adventurer.Rank = "B"
+	case "B":
+		adventurer.Rank = "A"
+	case "A":
+		adventurer.Rank = "S"
+	case "S":
+		adventurer.Rank = "SS"
+	case "SS":
+		adventurer.Rank = "SSS"
+	case "SSS":
+		adventurer.Rank = "SSS"
+	}
+	t.Adventurers[agentID] = adventurer
 }
 
 func (t *Team4) GetVoteWeight(rank string) int {
@@ -203,15 +243,157 @@ func (t *Team4) GetVoteWeight(rank string) int {
 	}
 }
 
-/* TO DO
-- Audit result <- probability of success decreases on Rank.
-- Bribe.
-- Override with a 'drinking phase' <- aim to increase familiarity / trust with other agents.
-- Rearrange Audit Vote order by rank <- messages are broadcast sync to the team.
-- Keep track of who has voted for who during an audit.
-- Losing side of 'audit' has to pay cleanup fees for damaging guild.
-- Override how withdrawals work <- need a vote each time if they want to withdraw more than 1.
-- Will be default to Random/Abdstain idk.
-- Ideally GetVoteResult or a similar function used for auditing and voting on withdrawals.
+// Need to handle AUDIT truth value and storing + how it succeeds
+/*Extra Functions to implement:
+team.TeamAoA.SetRankUp(rankUpVoteMap) Done
+team.TeamAoA.RunWithdrawalVote(proposedWithdrawalMap) Done
+
+agent.GetStatedWithdrawal(agent) if this needs to be different for ProposedWithdrawal
+
+agent.GetRankUpVote()
+agent.GetConfession(agent)
+agent.SetAgentAuditResult(agent, agentConfession)
+agent.GetWithdrawalVote(agent)
+*/
+
+/* Our Turn Flow - Additional Flow marked with ***************
+func (cs *EnvironmentServer) RunTurn(i, j int) {
+	fmt.Printf("\n\nIteration %v, Turn %v, current agent count: %v\n", i, j, len(cs.GetAgentMap()))
+
+	cs.teamsMutex.Lock()
+	defer cs.teamsMutex.Unlock()
+
+	for _, team := range cs.teams {
+		fmt.Println("\nRunning turn for team ", team.TeamID)
+		// Sum of contributions from all agents in the team for this turn
+		agentContributionsTotal := 0
+		for _, agentID := range team.Agents {
+			agent := cs.GetAgentMap()[agentID]
+			if agent.GetTeamID() == uuid.Nil || cs.IsAgentDead(agentID) {
+				continue
+			}
+			agent.StartRollingDice(agent)
+			agentActualContribution := agent.GetActualContribution(agent)
+			agentContributionsTotal += agentActualContribution
+			// Assume this will be broadcasted to each agent in a team via message in sync / update a map in Agent's struct
+			agentStatedContribution := agent.GetStatedContribution(agent)
+			agentScore := agent.GetTrueScore()
+			// Update audit result for this agent
+			team.TeamAoA.SetContributionAuditResult(agentID, agentScore, agentActualContribution, agentStatedContribution)
+			agent.SetTrueScore(agentScore - agentActualContribution)
+		}
+
+		***************
+		rankUpVoteMap := make(map[uuid.UUID]map[uuid.UUID]int)
+		for _, agentID := range team.Agents{
+			agent := cs.GetAgentMap()[agentID]
+			agentRankMap := agent.GetRankUpVote()
+			rankUpVoteMap[agentID] = agentRankMap
+		}
+		team.TeamAoA.SetRankUp(rankUpVoteMap)
+		***************
+
+		// Update common pool with total contribution from this team
+		// 	Agents do not get to see the common pool before deciding their contribution
+		//  Different to the withdrawal phase!
+		team.SetCommonPool(team.GetCommonPool() + agentContributionsTotal)
+
+
+		***************
+		proposedWithdrawalMap := make(map[uuid.UUID]int)
+		for _, agentID := range team.Agents{
+			agent := cs.GetAgentMap()[agentID]
+			agentStatedWithdrawal := agent.GetStatedWithdrawal(agent)
+			proposedWithdrawalMap[agentID] = agentStatedWithdrawal
+		}
+		withdrawalVoteMap := make(map[uuid.UUID]map[uuid.UUID]int)
+
+		for _, agentID := range team.Agents{
+			agent := cs.GetAgentMap()[agentID]
+			// Get Map of AgentId and 1 or 0 to proposed withdrawal (for each agent)
+			agentVote := agent.GetWithdrawalVote(agent)
+			withdrawalVoteMap[agentID] = agentVote
+		}
+		team.TeamAoA.RunWithdrawalVote(proposedWithdrawalMap, withdrawalVoteMap)
+		***************
+
+
+		// Do AoA processing
+		team.TeamAoA.RunAoAStuff()
+
+		// Initiate Contribution Audit vote
+		contributionAuditVotes := []common.Vote{}
+		for _, agentID := range team.Agents {
+			agent := cs.GetAgentMap()[agentID]
+			vote := agent.GetContributionAuditVote()
+			contributionAuditVotes = append(contributionAuditVotes, vote)
+		}
+
+		// Execute Contribution Audit if necessary
+		if agentToAudit := team.TeamAoA.GetVoteResult(contributionAuditVotes); agentToAudit != uuid.Nil {
+			auditResult := team.TeamAoA.GetContributionAuditResult(agentToAudit)
+			for _, agentID := range team.Agents {
+				agent := cs.GetAgentMap()[agentID]
+				agent.SetAgentContributionAuditResult(agentToAudit, auditResult)
+			}
+		}
+
+		orderedAgents := team.TeamAoA.GetWithdrawalOrder(team.Agents)
+		for _, agentID := range orderedAgents {
+			agent := cs.GetAgentMap()[agentID]
+			if agent.GetTeamID() == uuid.Nil || cs.IsAgentDead(agentID) {
+				continue
+			}
+
+			// Pass the current pool value to agent's methods
+			currentPool := team.GetCommonPool()
+			agentActualWithdrawal := agent.GetActualWithdrawal(agent)
+			if agentActualWithdrawal > currentPool {
+				agentActualWithdrawal = currentPool // Ensure withdrawal does not exceed available pool
+			}
+			agentStatedWithdrawal := agent.GetStatedWithdrawal(agent)
+			agentScore := agent.GetTrueScore()
+			// Update audit result for this agent
+			team.TeamAoA.SetWithdrawalAuditResult(agentID, agentScore, agentActualWithdrawal, agentStatedWithdrawal, team.GetCommonPool())
+			agent.SetTrueScore(agentScore + agentActualWithdrawal)
+
+			// Update the common pool after each withdrawal so agents can see the updated pool before deciding their withdrawal.
+			//  Different to the contribution phase!
+			team.SetCommonPool(currentPool - agentActualWithdrawal)
+			fmt.Printf("[server] Agent %v withdrew %v. Remaining pool: %v\n", agentID, agentActualWithdrawal, team.GetCommonPool())
+		}
+
+
+		***************
+		// Initiate Withdrawal Audit vote
+		withdrawalAuditVotes := []common.Vote{}
+		for _, agentID := range team.Agents {
+			agent := cs.GetAgentMap()[agentID]
+			vote := agent.GetWithdrawalAuditVote()
+			withdrawalAuditVotes = append(withdrawalAuditVotes, vote)
+		}
+
+		agentsToAudit := team.TeamAoA.GetVoteResult(withdrawalAuditVotes)
+		if len(agentsToAudit) > 0 {
+			for agentID := range agentsToAudit{
+				agent := cs.GetAgentMap()[agentID]
+				agentConfession := agent.GetConfession(agent)
+				agent.SetAgentAuditResult(agent, agentConfession)
+			}
+		}
+		***************
+
+		// Execute Withdrawal Audit if necessary
+		if agentToAudit := team.TeamAoA.GetVoteResult(withdrawalAuditVotes); agentToAudit != uuid.Nil {
+			auditResult := team.TeamAoA.GetWithdrawalAuditResult(agentToAudit)
+			for _, agentID := range team.Agents {
+				agent := cs.GetAgentMap()[agentID]
+				agent.SetAgentWithdrawalAuditResult(agentToAudit, auditResult)
+			}
+		}
+	}
+
+	// TODO: Reallocate agents who left their teams during the turn
+}
 
 */

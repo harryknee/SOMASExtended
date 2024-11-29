@@ -42,8 +42,8 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 			if agent.GetTeamID() == uuid.Nil || cs.IsAgentDead(agentID) {
 				continue
 			}
-			agent.StartRollingDice()
-			agentActualContribution := agent.GetActualContribution()
+			agent.StartRollingDice(agent)
+			agentActualContribution := agent.GetActualContribution(agent)
 			agentContributionsTotal += agentActualContribution
 			agentStatedContribution := agent.GetStatedContribution(agent)
 			agentScore := agent.GetTrueScore()
