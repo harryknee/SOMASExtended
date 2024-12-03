@@ -65,6 +65,7 @@ func Team4_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent
 		ExtendedAgent: GetBaseAgents(funcs, agentConfig),
 	}
 	mi_256.trueSomasTeamID = 4 // IMPORTANT: add your team number here!
+	mi_256.RandomizeCharacter()
 	return mi_256
 }
 
@@ -373,17 +374,16 @@ func (mi *MI_256_v1) DecideVote() bool {
 func (mi *MI_256_v1) RandomizeCharacter() {
 	mi.chaoticness = rand.Intn(3) + 1
 	mi.evilness = rand.Intn(3) + 1
-	mi.Initialize_opninions()
 	mi.haveIlied = false
-
+	mi.Initialize_opninions()
 }
 
 // ----------- functions that update character opinions ---------------------------------
 
 func (mi *MI_256_v1) Initialize_opninions() {
 	mi.affinity = make(map[uuid.UUID]int)
-	for _, agent := range mi.Server.GetTeam(mi.GetID()).Agents {
-		mi.affinity[agent] = 0
+	for _, agent := range mi.Server.UpdateAndGetAgentExposedInfo() {
+		mi.affinity[agent.AgentUUID] = 0
 	}
 	// needs to change
 	mi.mood = 0
