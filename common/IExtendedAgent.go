@@ -12,7 +12,7 @@ type IExtendedAgent interface {
 	GetTeamID() uuid.UUID
 	GetLastTeamID() uuid.UUID
 	GetTrueScore() int
-
+	
 	// Functions that involve strategic decisions
 	StartTeamForming(instance IExtendedAgent, agentInfoList []ExposedAgentInfo)
 	StartRollingDice(instance IExtendedAgent)
@@ -49,4 +49,11 @@ type IExtendedAgent interface {
 	SetAoARanking(Preferences []int)
 	GetContributionAuditVote() Vote
 	GetWithdrawalAuditVote() Vote
+
+
+	// Team4 AoA Functions
+	GetRankUpVote()
+	GetConfession()
+	GetWithdrawalVote()
+	
 }

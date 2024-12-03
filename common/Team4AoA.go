@@ -13,7 +13,7 @@ type Team4 struct {
 		Rank               string
 		ExpectedWithdrawal int
 	}
-	AuditMap map[uuid.UUID][]int
+	AuditMap map[uuid.UUID]map[int]int
 }
 
 func (t *Team4) SetRankUp(rankUpVoteMap map[uuid.UUID]map[uuid.UUID]int) {
@@ -37,9 +37,6 @@ func (t *Team4) SetRankUp(rankUpVoteMap map[uuid.UUID]map[uuid.UUID]int) {
 
 // Use this to increment contributions for rank raises and have agents declare what they want to withdraw
 func (t *Team4) SetContributionAuditResult(agentId uuid.UUID, agentScore int, agentActualContribution int, agentStatedContribution int) {
-
-	// Increment Contributions
-
 	// Check if adventurer in Team4 struct
 	adventurer, exists := t.Adventurers[agentId]
 	if !exists {
@@ -56,6 +53,10 @@ func (t *Team4) SetContributionAuditResult(agentId uuid.UUID, agentScore int, ag
 
 	// Update the adventurers contribution in the map in the map
 	t.Adventurers[agentId] = adventurer
+
+	withdrawalDiff = agentStatedContribution - agentActualContribution
+
+	t.AuditMap[agentId] = withdrawalDiff
 
 }
 
@@ -287,7 +288,7 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 		rankUpVoteMap := make(map[uuid.UUID]map[uuid.UUID]int)
 		for _, agentID := range team.Agents{
 			agent := cs.GetAgentMap()[agentID]
-			agentRankMap := agent.GetRankUpVote()
+			agentRankMap := agent.GetRankUpVote(agent)
 			rankUpVoteMap[agentID] = agentRankMap
 		}
 		team.TeamAoA.SetRankUp(rankUpVoteMap)
@@ -364,7 +365,7 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 		}
 
 
-		***************
+
 		// Initiate Withdrawal Audit vote
 		withdrawalAuditVotes := []common.Vote{}
 		for _, agentID := range team.Agents {
@@ -373,6 +374,7 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 			withdrawalAuditVotes = append(withdrawalAuditVotes, vote)
 		}
 
+		***************
 		agentsToAudit := team.TeamAoA.GetVoteResult(withdrawalAuditVotes)
 		if len(agentsToAudit) > 0 {
 			for agentID := range agentsToAudit{

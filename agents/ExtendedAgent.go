@@ -29,6 +29,11 @@ type ExtendedAgent struct {
 	// AoA vote
 	AoARanking []int
 
+	// Team 4 AoA
+	WithdrawalVote map[uuid.UUID]int
+	RankUpVote     map[uuid.UUID]int
+	Confession     bool
+
 	LastTeamID uuid.UUID // Tracks the last team the agent was part of
 }
 
@@ -479,4 +484,32 @@ func (mi *ExtendedAgent) SetAoARanking(Preferences []int) {
 
 func (mi *ExtendedAgent) GetAoARanking() []int {
 	return mi.AoARanking
+}
+
+// ----------------------- Team 4 AoA Functions -----------------------
+
+func (mi *ExtendedAgent) GetRankUpVote() map[uuid.UUID]int {
+	return mi.RankUpVote
+}
+
+// Change this for approval vote in your agent
+func (mi *ExtendedAgent) SetRankUpVote(Preferences map[uuid.UUID]int) {
+	mi.RankUpVote = Preferences
+}
+
+func (mi *ExtendedAgent) GetConfession() bool {
+	return mi.Confession
+}
+
+func (mi *ExtendedAgent) SetConfession(Confession bool) {
+	mi.Confession = Confession
+}
+
+// Get agents vote map for
+func (mi *ExtendedAgent) GetWithdrawalVote() map[uuid.UUID]int {
+	return mi.WithdrawalVote
+}
+
+func (mi *ExtendedAgent) SetWithdrawalVote(Preferences map[uuid.UUID]int) {
+	mi.WithdrawalVote = Preferences
 }
