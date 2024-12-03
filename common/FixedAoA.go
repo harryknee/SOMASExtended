@@ -1,9 +1,10 @@
 package common
 
 import (
-	"github.com/google/uuid"
 	"math/rand"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type FixedAoA struct {
@@ -73,6 +74,15 @@ func (t *FixedAoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
 	})
 
 	return shuffledAgents
+}
+
+// Do nothing
+func (t *FixedAoA) SetRankUp(rankUpVoteMap map[uuid.UUID]map[uuid.UUID]int) {
+}
+func (t *FixedAoA) RunProposedWithdrawalVote(map[uuid.UUID]int, map[uuid.UUID]map[uuid.UUID]int) {
+}
+func (t *FixedAoA) HandleConfessionAuditResult(confession bool, agentId uuid.UUID, agentScore int) int {
+	return 0
 }
 
 func CreateFixedAoA(duration int) IArticlesOfAssociation {

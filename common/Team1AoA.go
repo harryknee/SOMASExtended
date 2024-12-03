@@ -2,8 +2,9 @@ package common
 
 import (
 	"container/list"
-	"github.com/google/uuid"
 	"sort"
+
+	"github.com/google/uuid"
 )
 
 type Team1AoA struct {
@@ -95,6 +96,17 @@ func (t *Team1AoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
 		return t.ranking[agentIDs[i]] > t.ranking[agentIDs[j]]
 	})
 	return agentIDs
+}
+
+// Do nothing
+func (t *Team1AoA) SetRankUp(map[uuid.UUID]map[uuid.UUID]int) {
+}
+
+func (t *Team1AoA) RunProposedWithdrawalVote(map[uuid.UUID]int, map[uuid.UUID]map[uuid.UUID]int) {
+}
+
+func (t *Team1AoA) HandleConfessionAuditResult(confession bool, agentId uuid.UUID, agentScore int) int {
+	return 0
 }
 
 func CreateTeam1AoA(team *Team) IArticlesOfAssociation {

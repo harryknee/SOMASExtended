@@ -28,6 +28,17 @@ type WithdrawalMessage struct {
 	ExpectedAmount int
 }
 
+type ProposedWithdrawalMessage struct {
+	message.BaseMessage
+	StatedAmount   int
+	ExpectedAmount int
+}
+
+type ConfessionMessage struct {
+	message.BaseMessage
+	Confession bool
+}
+
 func (msg *TeamFormationMessage) InvokeMessageHandler(agent IExtendedAgent) {
 	agent.HandleTeamFormationMessage(msg)
 }
@@ -42,4 +53,12 @@ func (msg *ContributionMessage) InvokeMessageHandler(agent IExtendedAgent) {
 
 func (msg *WithdrawalMessage) InvokeMessageHandler(agent IExtendedAgent) {
 	agent.HandleWithdrawalMessage(msg)
+}
+
+func (msg *ProposedWithdrawalMessage) InvokeMessageHandler(agent IExtendedAgent) {
+	agent.HandleProposedWithdrawalMessage(msg)
+}
+
+func (msg *ConfessionMessage) InvokeMessageHandler(agent IExtendedAgent) {
+	agent.HandleConfessionMessage(msg)
 }

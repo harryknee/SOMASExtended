@@ -126,6 +126,14 @@ func (t *Team2AoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
 	return shuffledAgents
 }
 
+// Do nothing
+func (t *Team2AoA) SetRankUp(rankUpVoteMap map[uuid.UUID]map[uuid.UUID]int) {
+}
+func (t *Team2AoA) RunProposedWithdrawalVote(map[uuid.UUID]int, map[uuid.UUID]map[uuid.UUID]int) {
+}
+func (t *Team2AoA) HandleConfessionAuditResult(confession bool, agentId uuid.UUID, agentScore int) int {
+	return 0
+}
 func (t *Team2AoA) RunAoAStuff() {}
 
 func CreateTeam2AoA(auditDuration int) IArticlesOfAssociation {

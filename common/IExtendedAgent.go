@@ -64,6 +64,21 @@ type IExtendedAgent interface {
 	GetContributionAuditVote() Vote
 	GetWithdrawalAuditVote() Vote
 
+	// Team4 AoA Functions
+	GetRankUpVote() map[uuid.UUID]int
+	GetConfession() bool
+	GetProposedWithdrawalVote() map[uuid.UUID]int
+
+	GetProposedWithdrawal(instance IExtendedAgent) int
+	ProposeWithdrawal() int
+
+	StateProposalToTeam()
+	CreateProposedWithdrawalMessage(statedAmount int) *ProposedWithdrawalMessage
+	HandleProposedWithdrawalMessage(msg *ProposedWithdrawalMessage)
+
+	StateConfessionToTeam()
+	CreateConfessionMessage(confession bool) *ConfessionMessage
+	HandleConfessionMessage(msg *ConfessionMessage)
 	// Data Recording
 	RecordAgentStatus() gameRecorder.AgentRecord
 }

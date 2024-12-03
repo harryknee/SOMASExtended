@@ -41,6 +41,11 @@ type ExtendedAgent struct {
 
 	// for recording purpose
 	trueSomasTeamID int // your true team id! e.g. team 4 -> 4. Override this in your agent constructor
+
+	// Team 4 AoA
+	ProposedWithdrawalVote map[uuid.UUID]int
+	RankUpVote             map[uuid.UUID]int
+	Confession             bool
 }
 
 type AgentConfig struct {
@@ -50,42 +55,15 @@ type AgentConfig struct {
 
 func GetBaseAgents(funcs agent.IExposedServerFunctions[common.IExtendedAgent], configParam AgentConfig) *ExtendedAgent {
 	return &ExtendedAgent{
-		BaseAgent:    agent.CreateBaseAgent(funcs),
-		Server:       funcs.(common.IServer), // Type assert the server functions to IServer interface
-		Score:        configParam.InitScore,
-		VerboseLevel: configParam.VerboseLevel,
-		AoARanking:   []int{3, 2, 1, 0},
-		TeamRanking:  []uuid.UUID{},
-	}
-}
-
-func GetBaseAgents1(funcs agent.IExposedServerFunctions[common.IExtendedAgent], configParam AgentConfig) *ExtendedAgent {
-	return &ExtendedAgent{
-		BaseAgent:    agent.CreateBaseAgent(funcs),
-		server:       funcs.(common.IServer), // Type assert the server functions to IServer interface
-		score:        configParam.InitScore,
-		verboseLevel: configParam.VerboseLevel,
-		AoARanking:   []int{0, 1, 2, 3},
-	}
-}
-
-func GetBaseAgents2(funcs agent.IExposedServerFunctions[common.IExtendedAgent], configParam AgentConfig) *ExtendedAgent {
-	return &ExtendedAgent{
-		BaseAgent:    agent.CreateBaseAgent(funcs),
-		server:       funcs.(common.IServer), // Type assert the server functions to IServer interface
-		score:        configParam.InitScore,
-		verboseLevel: configParam.VerboseLevel,
-		AoARanking:   []int{1, 2, 0, 3},
-	}
-}
-
-func GetBaseAgents3(funcs agent.IExposedServerFunctions[common.IExtendedAgent], configParam AgentConfig) *ExtendedAgent {
-	return &ExtendedAgent{
-		BaseAgent:    agent.CreateBaseAgent(funcs),
-		server:       funcs.(common.IServer), // Type assert the server functions to IServer interface
-		score:        configParam.InitScore,
-		verboseLevel: configParam.VerboseLevel,
-		AoARanking:   []int{2, 3, 1, 0},
+		BaseAgent:              agent.CreateBaseAgent(funcs),
+		Server:                 funcs.(common.IServer), // Type assert the server functions to IServer interface
+		Score:                  configParam.InitScore,
+		VerboseLevel:           configParam.VerboseLevel,
+		AoARanking:             []int{3, 2, 1, 0},
+		TeamRanking:            []uuid.UUID{},
+		ProposedWithdrawalVote: make(map[uuid.UUID]int),
+		RankUpVote:             make(map[uuid.UUID]int),
+		Confession:             false,
 	}
 }
 
@@ -421,6 +399,20 @@ func (mi *ExtendedAgent) CreateWithdrawalMessage(statedAmount int) *common.Withd
 	}
 }
 
+func (mi *ExtendedAgent) CreateProposedWithdrawalMessage(statedAmount int) *common.ProposedWithdrawalMessage {
+	return &common.ProposedWithdrawalMessage{
+		BaseMessage:  mi.CreateBaseMessage(),
+		StatedAmount: statedAmount,
+	}
+}
+
+func (mi *ExtendedAgent) CreateConfessionMessage(confession bool) *common.ConfessionMessage {
+	return &common.ConfessionMessage{
+		BaseMessage: mi.CreateBaseMessage(),
+		Confession:  confession,
+	}
+}
+
 // ----------------------- Debug functions -----------------------
 
 func Roll3Dice() int {
@@ -570,4 +562,97 @@ func (mi *ExtendedAgent) RecordAgentStatus() gameRecorder.AgentRecord {
 		mi.GetTeamID(),
 	)
 	return record
+}
+
+// ----------------------- Team 4 AoA Functions -----------------------
+
+func (mi *ExtendedAgent) GetRankUpVote() map[uuid.UUID]int {
+	return mi.RankUpVote
+}
+
+// Change this for approval vote in your agent
+func (mi *ExtendedAgent) SetRankUpVote(Preferences map[uuid.UUID]int) {
+	mi.RankUpVote = Preferences
+}
+
+func (mi *ExtendedAgent) GetConfession() bool {
+	return mi.Confession
+}
+
+func (mi *ExtendedAgent) StateConfessionToTeam() {
+	// Broadcast contribution to team
+	confession := mi.GetConfession()
+	confessionMsg := mi.CreateConfessionMessage(confession)
+	mi.BroadcastSyncMessageToTeam(confessionMsg)
+}
+
+func (mi *ExtendedAgent) HandleConfessionMessage(msg *common.ConfessionMessage) {
+	if mi.VerboseLevel > 8 {
+		if msg.Confession {
+			log.Printf("Agent %s received confession notification from %s: I'm really sorry :(",
+				mi.GetID(), msg.GetSender())
+		} else {
+			log.Printf("Agent %s received confession notification from %s: Noo! I'm innocent I swear!",
+				mi.GetID(), msg.GetSender())
+		}
+	}
+	// Team's agent should implement logic to store or process the reported proposed withdrawal amount as desired
+}
+
+func (mi *ExtendedAgent) SetConfession(Confession bool) {
+	mi.Confession = Confession
+}
+
+// Get agents vote map for
+func (mi *ExtendedAgent) GetProposedWithdrawalVote() map[uuid.UUID]int {
+	return mi.ProposedWithdrawalVote
+}
+
+func (mi *ExtendedAgent) SetProposedWithdrawalVote(Preferences map[uuid.UUID]int) {
+	mi.ProposedWithdrawalVote = Preferences
+}
+
+func (mi *ExtendedAgent) GetProposedWithdrawal(instance common.IExtendedAgent) int {
+	// first check if the agent has a team
+	if !mi.HasTeam() {
+		return 0
+	}
+	// Currently, assume stated withdrawal matches actual withdrawal
+	return instance.ProposeWithdrawal()
+}
+
+func (mi *ExtendedAgent) StateProposalToTeam() {
+	// Broadcast contribution to team
+	proposedWithdrawal := mi.GetProposedWithdrawal(mi)
+	proposalMsg := mi.CreateProposedWithdrawalMessage(proposedWithdrawal)
+	mi.BroadcastSyncMessageToTeam(proposalMsg)
+}
+
+func (mi *ExtendedAgent) ProposeWithdrawal() int {
+	// first check if the agent has a team
+	if !mi.HasTeam() {
+		return 0
+	}
+	if mi.Server.GetTeam(mi.GetID()).TeamAoA != nil {
+		// double check if score in agent is sufficient (this should be handled by AoA though)
+		commonPool := mi.Server.GetTeam(mi.GetID()).GetCommonPool()
+		aoaExpectedWithdrawal := mi.Server.GetTeam(mi.GetID()).TeamAoA.GetExpectedWithdrawal(mi.GetID(), mi.GetTrueScore(), commonPool)
+		if commonPool < aoaExpectedWithdrawal {
+			return commonPool
+		}
+		return aoaExpectedWithdrawal + rand.Intn(4)
+	} else {
+		if mi.VerboseLevel > 6 {
+			log.Printf("[WARNING] Agent %s has no AoA, withdrawing 0\n", mi.GetID())
+		}
+		return 0
+	}
+}
+
+func (mi *ExtendedAgent) HandleProposedWithdrawalMessage(msg *common.ProposedWithdrawalMessage) {
+	if mi.VerboseLevel > 8 {
+		log.Printf("Agent %s received proposed withdrawal notification from %s: amount=%d\n",
+			mi.GetID(), msg.GetSender(), msg.StatedAmount)
+	}
+	// Team's agent should implement logic to store or process the reported proposed withdrawal amount as desired
 }

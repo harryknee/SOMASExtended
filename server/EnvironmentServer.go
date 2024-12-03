@@ -73,6 +73,17 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 			agent.SetTrueScore(agentScore - agentActualContribution)
 		}
 
+		// ***************
+		rankUpVoteMap := make(map[uuid.UUID]map[uuid.UUID]int)
+		for _, agentID := range team.Agents {
+			agent := cs.GetAgentMap()[agentID]
+			agentRankMap := agent.GetRankUpVote()
+			rankUpVoteMap[agentID] = agentRankMap
+		}
+		team.TeamAoA.SetRankUp(rankUpVoteMap)
+
+		// ***************
+
 		// Update common pool with total contribution from this team
 		// 	Agents do not get to see the common pool before deciding their contribution
 		//  Different to the withdrawal phase!
@@ -94,6 +105,26 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 				agent.SetAgentContributionAuditResult(agentToAudit, auditResult)
 			}
 		}
+
+		// ***************
+		proposedWithdrawalMap := make(map[uuid.UUID]int)
+		for _, agentID := range team.Agents {
+			agent := cs.GetAgentMap()[agentID]
+			agentStatedWithdrawal := agent.GetProposedWithdrawal(agent)
+			proposedWithdrawalMap[agentID] = agentStatedWithdrawal
+			agent.StateProposalToTeam()
+
+		}
+		withdrawalVoteMap := make(map[uuid.UUID]map[uuid.UUID]int)
+
+		for _, agentID := range team.Agents {
+			agent := cs.GetAgentMap()[agentID]
+			// Get Map of AgentId and 1 or 0 to proposed withdrawal (for each agent)
+			agentVote := agent.GetProposedWithdrawalVote()
+			withdrawalVoteMap[agentID] = agentVote
+		}
+		team.TeamAoA.RunProposedWithdrawalVote(proposedWithdrawalMap, withdrawalVoteMap)
+		// ***************
 
 		orderedAgents := team.TeamAoA.GetWithdrawalOrder(team.Agents)
 		for _, agentID := range orderedAgents {
@@ -143,6 +174,19 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 			vote := agent.GetWithdrawalAuditVote()
 			withdrawalAuditVotes = append(withdrawalAuditVotes, vote)
 		}
+
+		// ***************
+		if agentToAudit := team.TeamAoA.GetVoteResult(withdrawalAuditVotes); agentToAudit != uuid.Nil {
+			agent := cs.GetAgentMap()[agentToAudit]
+			agentConfession := agent.GetConfession()
+			agent.StateConfessionToTeam()
+			agentScore := agent.GetTrueScore()
+			auditResult := team.TeamAoA.HandleConfessionAuditResult(agentConfession, agentToAudit, agentScore)
+			agent.SetTrueScore(agentScore - auditResult)
+			currentPool := team.GetCommonPool()
+			team.SetCommonPool(currentPool + auditResult)
+		}
+		// ***************
 
 		// Execute Withdrawal Audit if necessary
 		if agentToAudit := team.TeamAoA.GetVoteResult(withdrawalAuditVotes); agentToAudit != uuid.Nil {
@@ -215,34 +259,35 @@ func (cs *EnvironmentServer) allocateAoAs() {
 			}
 		}
 
-		// Determine the preferred AoA based on the majority vote
-		currentMax := 0
-		preference := 0
-		for aoa, voteCount := range voteSum {
-			if voteCount > currentMax {
-				currentMax = voteCount
-				preference = aoa
-			}
-		}
+		// // Determine the preferred AoA based on the majority vote
+		// currentMax := 0
+		// preference := 0
+		// for aoa, voteCount := range voteSum {
+		// 	if voteCount > currentMax {
+		// 		currentMax = voteCount
+		// 		preference = aoa
+		// 	}
+		// }
 
 		// Update the team's strategy
-		switch preference {
-		case 1:
-			team.TeamAoA = common.CreateTeam1AoA(team)
-		case 2:
-			team.TeamAoA = common.CreateTeam2AoA(5)
-		case 3:
-			team.TeamAoA = common.CreateFixedAoA(1)
-		case 4:
-			team.TeamAoA = common.CreateFixedAoA(1)
-		case 5:
-			team.TeamAoA = common.CreateFixedAoA(1)
-		case 6:
-			team.TeamAoA = common.CreateFixedAoA(1)
-		default:
-			team.TeamAoA = common.CreateFixedAoA(1)
-		}
+		// switch preference {
+		// case 1:
+		// 	team.TeamAoA = common.CreateTeam1AoA(team)
+		// case 2:
+		// 	team.TeamAoA = common.CreateTeam2AoA(5)
+		// case 3:
+		// 	team.TeamAoA = common.CreateFixedAoA(1)
+		// case 4:
+		// 	team.TeamAoA = common.CreateFixedAoA(1)
+		// case 5:
+		// 	team.TeamAoA = common.CreateFixedAoA(1)
+		// case 6:
+		// 	team.TeamAoA = common.CreateFixedAoA(1)
+		// default:
+		// 	team.TeamAoA = common.CreateFixedAoA(1)
+		// }
 
+		team.TeamAoA = common.CreateTeam4AoA(team)
 		cs.Teams[team.TeamID] = team
 	}
 }

@@ -1,6 +1,7 @@
 package agents
 
 import (
+	"fmt"
 	"log"
 	"math/rand"
 
@@ -78,6 +79,34 @@ func (mi *MI_256_v1) DecideAudit() bool {
 func (mi *MI_256_v1) DecidePunishment() int {
 	// TODO: implement punishment strategy
 	return 1
+}
+
+// Need to do something about agents own ID in here
+func (mi *MI_256_v1) GetRankUpVote() map[uuid.UUID]int {
+	log.Printf("Called overriden GetRankUpVote()")
+	agentsInTeam := mi.Server.GetAgentsInTeam(mi.TeamID)
+	rankUpVote := make(map[uuid.UUID]int)
+
+	for _, agentId := range agentsInTeam {
+		rankUpVote[agentId] = rand.Intn(2)
+	}
+
+	fmt.Println(rankUpVote)
+	mi.SetConfession(true)
+	return rankUpVote
+}
+
+func (mi *MI_256_v1) GetProposedWithdrawalVote() map[uuid.UUID]int {
+	log.Printf("Called overriden GetProposedWithdrawalVote()")
+	agentsInTeam := mi.Server.GetAgentsInTeam(mi.TeamID)
+	proposedWithdrawals := make(map[uuid.UUID]int)
+
+	for _, agentId := range agentsInTeam {
+		proposedWithdrawals[agentId] = rand.Intn(2)
+	}
+
+	fmt.Println(proposedWithdrawals)
+	return proposedWithdrawals
 }
 
 // ----------------------- State Helpers -----------------------
