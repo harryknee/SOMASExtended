@@ -127,7 +127,7 @@ func (mi *MI_256_v1) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) 
 }
 
 // Dice Strategy
-func (mi *MI_256_v1) StickOrAgain() bool {
+func (mi *MI_256_v1) StickOrAgain(accumulatedScore int, prevRoll int) bool {
 	fmt.Printf("Called overriden StickOrAgain\n")
 
 	// the higher the mood, the more risky the roll dice strategy will be
@@ -163,7 +163,11 @@ func (mi *MI_256_v1) StickOrAgain() bool {
 // definition of Chaoticness: The willingness to take risk to breach the AoA
 // definition of Mood: The willingness to take actions which diverges from abosolute neutral
 // Contribution Strategy
-func (mi *MI_256_v1) DecideContribution() (int, int) {
+func (mi *MI_256_v1) DecideContribution() int {
+	if mi.Score == 0 {
+		return 0
+	}
+
 	//parameters: AoAExpectedContribution, Mood, Lawfulness,Evilness，  CurrentScore
 	mi.intendedContribution = 0
 	contribute_percentage := 0.0
@@ -247,20 +251,23 @@ func (mi *MI_256_v1) DecideContribution() (int, int) {
 	// how much to declare:
 	// if you contributed less, there is no point to lie ( if audition checks against the expected contribution)
 	mi.declaredcontribution = max(mi.intendedContribution, mi.AoAExpectedContribution)
-	// TODO: implement contribution strategy/;
 
-	return mi.intendedContribution, mi.declaredcontribution
+	return mi.intendedContribution
+}
+
+func (mi *MI_256_v1) GetStatedContribution(instance common.IExtendedAgent) int {
+	return mi.declaredcontribution
 }
 
 // Withdrawal Strategy
-func (mi *MI_256_v1) DecideWithdrawal() (int, int) {
+func (mi *MI_256_v1) DecideWithdrawal() int {
 	mi.IntendedWithdrawal = 0
 	Withdrawal_percentage := 0.0
 	// CurrentScore = mi.Score
 
 	mood_modifier := float64(1.0 / 32.0 * float64(mi.mood))
 	// we scale from 0-2*AoAWithdrawal
-	neutral_mean := float64(mi.AoAExpectedWithdrawal / (2 * mi.AoAExpectedWithdrawal)) //normalize from 0-1
+	neutral_mean := float64(mi.AoAExpectedWithdrawal / (2*mi.AoAExpectedWithdrawal + 1)) //normalize from 0-1
 	//we model evil and good with different standard deviations, with chaotic being high standard deviation,
 	lawful_evil_mean := neutral_mean * 9 / 8
 	neutral_evil_mean := neutral_mean/4 + neutral_mean
@@ -331,7 +338,11 @@ func (mi *MI_256_v1) DecideWithdrawal() (int, int) {
 	mi.declaredWithdrawal = min(mi.IntendedWithdrawal, mi.AoAExpectedWithdrawal)
 
 	// TODO: implement contribution strategy
-	return mi.IntendedWithdrawal, mi.declaredWithdrawal
+	return mi.IntendedWithdrawal
+}
+
+func (mi *MI_256_v1) GetStatedWithdrawal(instance common.IExtendedAgent) int {
+	return mi.declaredWithdrawal
 }
 
 // Audit Strategy
