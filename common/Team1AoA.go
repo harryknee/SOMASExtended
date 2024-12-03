@@ -2,14 +2,14 @@ package common
 
 import (
 	"container/list"
-
 	"github.com/google/uuid"
+	"sort"
 )
 
 type Team1AoA struct {
-	auditResult       map[uuid.UUID]*list.List
-	ranking           map[uuid.UUID]int
-	withdrawalPerRank map[int]int
+	auditResult map[uuid.UUID]*list.List
+	ranking     map[uuid.UUID]int
+	threshold   int
 }
 
 func (t *Team1AoA) ResetAuditMap() {
@@ -17,18 +17,35 @@ func (t *Team1AoA) ResetAuditMap() {
 }
 
 func (t *Team1AoA) GetExpectedContribution(agentId uuid.UUID, agentScore int) int {
-	return 0 // Did we confirm 0?
+	return t.threshold // For now using threshold as minimum for all ranks, later have per rank minimums? But need to vote what is min?
 }
 
 func (t *Team1AoA) SetContributionAuditResult(agentId uuid.UUID, agentScore int, agentActualContribution int, agentStatedContribution int) {
-	t.auditResult[agentId].PushBack(agentStatedContribution > agentActualContribution)
+	t.auditResult[agentId].PushBack((agentStatedContribution > agentActualContribution))
+
+	// Just for our AoA we are updating rank based on stated
+	t.ranking[agentId] += (agentStatedContribution / t.threshold) // Plus 1 rank every `threshold` points?
+
+	// Cap agent rank at 5
+	if t.ranking[agentId] > 5 {
+		t.ranking[agentId] = 5
+	}
+	// Lower rank if insufficient contribution
+	if agentActualContribution < t.threshold { // For now using threshold as minimum for all ranks, later have per rank minimums? But need to vote what is min?
+		t.ranking[agentId] -= 1
+	}
+	if t.ranking[agentId] < 1 { // Ensure cant go below 1
+		t.ranking[agentId] = 1
+	}
+
 }
 
 func (t *Team1AoA) GetExpectedWithdrawal(agentId uuid.UUID, agentScore int, commonPool int) int {
-	k := t.ranking[agentId]
-	total := t.getTotalInRank(k)
-	percentage := t.withdrawalPerRank[k]
-	expectedWithdrawal := (commonPool * (percentage)) / (total * 100)
+	totalWeightedSum := 0
+	for _, rank := range t.ranking {
+		totalWeightedSum += rank
+	}
+	expectedWithdrawal := t.ranking[agentId] * (commonPool / (totalWeightedSum + 5)) // Weight 5 for pool?
 	return expectedWithdrawal
 }
 
@@ -37,51 +54,60 @@ func (t *Team1AoA) SetWithdrawalAuditResult(agentId uuid.UUID, agentScore int, a
 }
 
 func (t *Team1AoA) GetAuditCost(commonPool int) int {
-	return 5 // Constant cost?
+	// Need to get argument which agent being audited and then change cost?
+	return 5
 }
 
 func (t *Team1AoA) GetVoteResult(votes []Vote) uuid.UUID {
-	//ToDo
-	// Couldnt find how vote works
-	return uuid.Nil
-}
-
-func (t *Team1AoA) getTotalInRank(k int) int {
-	total := 0
-	for _, rank := range t.ranking {
-		if rank == k {
-			total++
+	// Count total votes
+	totalVotes := 0
+	voteMap := make(map[uuid.UUID]int)
+	highestVotes := -1
+	highestVotedID := uuid.Nil
+	for _, vote := range votes {
+		totalVotes += vote.IsVote
+		if vote.IsVote == 1 { // Should agents who didnt want to vote, get a vote if majority wants to?
+			voteMap[vote.VotedForID]++
+		}
+		// Check if this ID has the highest votes
+		if voteMap[vote.VotedForID] > highestVotes {
+			highestVotedID = vote.VotedForID
+			highestVotes = voteMap[vote.VotedForID]
 		}
 	}
-	return total
-}
-
-func (t *Team1AoA) RunAoAStuff() {
+	if totalVotes <= 0 {
+		return uuid.Nil // Majority does not want to vote
+	}
+	return highestVotedID
 }
 
 func (t *Team1AoA) GetContributionAuditResult(agentId uuid.UUID) bool {
-	return false
+	return t.auditResult[agentId].Back().Value.(int) == 1
 }
 
 func (t *Team1AoA) GetWithdrawalAuditResult(agentId uuid.UUID) bool {
-	return false
+	return t.auditResult[agentId].Back().Value.(int) == 1
 }
 
 func (t *Team1AoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
+	// Sort the agent based on their rank value in descending order
+	sort.Slice(agentIDs, func(i, j int) bool {
+		return t.ranking[agentIDs[i]] > t.ranking[agentIDs[j]]
+	})
 	return agentIDs
 }
 
-func CreateTeam1AoA() IArticlesOfAssociation {
-	withdrawalPerRank := make(map[int]int)
-	withdrawalPerRank[0] = 5
-	withdrawalPerRank[1] = 5
-	withdrawalPerRank[2] = 10
-	withdrawalPerRank[3] = 20
-	withdrawalPerRank[4] = 40
+func CreateTeam1AoA(team *Team) IArticlesOfAssociation {
+	auditResult := make(map[uuid.UUID]*list.List)
+	ranking := make(map[uuid.UUID]int)
+	for _, agent := range team.Agents {
+		auditResult[agent] = list.New()
+		ranking[agent] = 1
+	}
 
 	return &Team1AoA{
-		auditResult:       make(map[uuid.UUID]*list.List),
-		ranking:           make(map[uuid.UUID]int),
-		withdrawalPerRank: withdrawalPerRank,
+		auditResult: auditResult,
+		ranking:     ranking,
+		threshold:   5,
 	}
 }

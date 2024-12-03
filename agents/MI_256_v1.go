@@ -1,8 +1,8 @@
 package agents
 
 import (
-	"SOMAS_Extended/common"
 	"fmt"
+	common "github.com/ADimoska/SOMASExtended/common"
 	"math/rand"
 
 	"github.com/MattSScott/basePlatformSOMAS/v2/pkg/agent"
@@ -15,9 +15,11 @@ type MI_256_v1 struct {
 
 // constructor for MI_256_v1
 func Team4_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent], agentConfig AgentConfig) *MI_256_v1 {
-	return &MI_256_v1{
+	mi_256 := &MI_256_v1{
 		ExtendedAgent: GetBaseAgents(funcs, agentConfig),
 	}
+	mi_256.trueSomasTeamID = 4 // IMPORTANT: add your team number here!
+	return mi_256
 }
 
 // ----------------------- Strategies -----------------------
@@ -45,7 +47,7 @@ func (mi *MI_256_v1) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) 
 }
 
 // Dice Strategy
-func (mi *MI_256_v1) StickOrAgain() bool {
+func (mi *MI_256_v1) StickOrAgain(accumulatedScore int, prevRoll int) bool {
 	fmt.Printf("Called overriden StickOrAgain\n")
 	// TODO: implement dice strategy
 	return true

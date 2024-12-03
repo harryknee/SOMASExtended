@@ -8,12 +8,15 @@ import (
 
 // A bit messy right now will clean up soon and add detailed and clear description of how our AoA works.
 
+// Handle Audit Result
+// Handle Punishment + Punishment vote
+
 type Team4 struct {
 	Adventurers map[uuid.UUID]struct {
 		Rank               string
 		ExpectedWithdrawal int
 	}
-	AuditMap map[uuid.UUID]map[int]int
+	AuditMap map[uuid.UUID][]int
 }
 
 func (t *Team4) SetRankUp(rankUpVoteMap map[uuid.UUID]map[uuid.UUID]int) {
@@ -54,10 +57,24 @@ func (t *Team4) SetContributionAuditResult(agentId uuid.UUID, agentScore int, ag
 	// Update the adventurers contribution in the map in the map
 	t.Adventurers[agentId] = adventurer
 
-	withdrawalDiff = agentStatedContribution - agentActualContribution
+	contributionDiff := agentStatedContribution - agentActualContribution
+	if agentStatedContribution > agentActualContribution || agentActualContribution < 2 {
+		t.AuditMap[agentId] = append(t.AuditMap[agentId], contributionDiff)
 
-	t.AuditMap[agentId] = withdrawalDiff
+	}
 
+}
+
+func (t *Team4) SetWithdrawalAuditResult(agentId uuid.UUID, agentScore int, agentActualWithdrawal int, agentStatedWithdrawal int, commonPool int) {
+	withdrawalDiff := agentStatedWithdrawal - agentActualWithdrawal
+	if agentStatedWithdrawal > agentActualWithdrawal || agentActualWithdrawal < 2 {
+		t.AuditMap[agentId] = append(t.AuditMap[agentId], withdrawalDiff)
+
+	}
+}
+
+func (t *Team4) ResetAuditMap() {
+	t.AuditMap = make(map[uuid.UUID][]int)
 }
 
 func (t *Team4) GetExpectedContribution(agentId uuid.UUID, agentScore int) int {
@@ -383,6 +400,8 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 				agent.SetAgentAuditResult(agent, agentConfession)
 			}
 		}
+
+
 		***************
 
 		// Execute Withdrawal Audit if necessary
