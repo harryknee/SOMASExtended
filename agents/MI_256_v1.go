@@ -136,19 +136,19 @@ func (mi *MI_256_v1) StickOrAgain() bool {
 	threshMid := 11
 	threshHigh := 14
 	if mi.mood > 5 { // be greedy
-		if mi.lastScore < threshHigh {
+		if mi.LastScore < threshHigh {
 			return true
 		} else {
 			return false
 		}
 	} else if (-5 < mi.mood) && (mi.mood < 5) {
-		if mi.lastScore < threshMid {
+		if mi.LastScore < threshMid {
 			return true
 		} else {
 			return false
 		}
 	} else {
-		if mi.lastScore < threshLow {
+		if mi.LastScore < threshLow {
 			return true
 		} else {
 			return false
@@ -167,10 +167,10 @@ func (mi *MI_256_v1) DecideContribution() (int, int) {
 	//parameters: AoAExpectedContribution, Mood, Lawfulness,Evilness，  CurrentScore
 	mi.intendedContribution = 0
 	contribute_percentage := 0.0
-	// CurrentScore = mi.score
+	// CurrentScore = mi.Score
 
 	mood_modifier := float64(1.0 / 32.0 * float64(mi.mood))
-	neutral_mean := float64(mi.AoAExpectedContribution / mi.score) //normalize from 0-1
+	neutral_mean := float64(mi.AoAExpectedContribution / mi.Score) //normalize from 0-1
 	//we model evil and good with different standard deviations, with chaotic being high standard deviation,
 	lawful_evil_mean := neutral_mean * 7 / 8
 	neutral_evil_mean := neutral_mean / 2
@@ -242,7 +242,7 @@ func (mi *MI_256_v1) DecideContribution() (int, int) {
 	}
 	contribute_percentage = Apply_mood(contribute_percentage)
 
-	mi.intendedContribution = max(int(math.Round(float64(contribute_percentage)*float64(mi.score))), mi.score)
+	mi.intendedContribution = max(int(math.Round(float64(contribute_percentage)*float64(mi.Score))), mi.Score)
 
 	// how much to declare:
 	// if you contributed less, there is no point to lie ( if audition checks against the expected contribution)
@@ -256,7 +256,7 @@ func (mi *MI_256_v1) DecideContribution() (int, int) {
 func (mi *MI_256_v1) DecideWithdrawal() (int, int) {
 	mi.IntendedWithdrawal = 0
 	Withdrawal_percentage := 0.0
-	// CurrentScore = mi.score
+	// CurrentScore = mi.Score
 
 	mood_modifier := float64(1.0 / 32.0 * float64(mi.mood))
 	// we scale from 0-2*AoAWithdrawal
@@ -349,14 +349,14 @@ func (mi *MI_256_v1) DecideVote() bool {
 
 //get common pool resource
 
-// mi.server.GetTeam(mi.GetID()).GetCommonPool()
+// mi.Server.GetTeam(mi.GetID()).GetCommonPool()
 
 // //get ids of people in my team
-// mi.server.GetTeam(mi.GetID()).Agents
+// mi.Server.GetTeam(mi.GetID()).Agents
 
 // //get the voting status (to implement)
 
-// mi.server.GetTeam(mi.GetID()).
+// mi.Server.GetTeam(mi.GetID()).
 
 // ---------------------------------------------------------------
 func (mi *MI_256_v1) RandomizeCharacter() {
@@ -371,7 +371,7 @@ func (mi *MI_256_v1) RandomizeCharacter() {
 
 func (mi *MI_256_v1) Initialize_opninions() {
 	mi.affinity = make(map[uuid.UUID]int)
-	for agent := range mi.server.GetTeam(mi.GetID()).Agents {
+	for _, agent := range mi.Server.GetTeam(mi.GetID()).Agents {
 		mi.affinity[agent] = 0
 	}
 	// needs to change
@@ -391,7 +391,7 @@ Mood needs to be updated at the following timepoints:
 
 1. At the start of turn, where a random Urge is generated
 2. Dice rolls, wether if you have gone bust or not
-3. Comparing the expected score of every agent after round end to you
+3. Comparing the expected Score of every agent after round end to you
 4. If you get audited,
 
 */
@@ -407,7 +407,7 @@ func (mi *MI_256_v1) UpdateMoodAfterRoll() {
 
 	bustMoodModifier := 1
 	// if the roll has gone bust
-	if mi.lastScore == 0 {
+	if mi.LastScore == 0 {
 		mi.mood += bustMoodModifier * mi.chaoticness
 	}
 }
@@ -444,7 +444,7 @@ func (mi *MI_256_v1) UpdateAffinityAfterContribute() {
 
 	// contructing a socially fair structure:
 	// simple, meeting the AoA Expected Contribution==fair
-	for agent := range mi.server.GetTeam(mi.GetID()).Agents {
+	for _, agent := range mi.Server.GetTeam(mi.GetID()).Agents {
 		agentExpected := mi.teamAgentsExpectedContribution[agent]
 		agentDeclared := mi.teamAgentsDeclaredContribution[agent]
 		affinityChange := 0.0
@@ -469,7 +469,7 @@ func (mi *MI_256_v1) UpdateAffinityAfterContribute() {
 }
 func (mi *MI_256_v1) UpdateAffinityAfterWithdraw() {
 	//similar to contribution, there withdrawing same amount is fair, and satisfaction comes into play
-	for agent := range mi.server.GetTeam(mi.GetID()).Agents {
+	for _, agent := range mi.Server.GetTeam(mi.GetID()).Agents {
 		agentExpected := mi.teamAgentsExpectedWithdraw[agent]
 		agentDeclared := mi.teamAgentsDeclaredWithdraw[agent]
 		affinityChange := 0.0
@@ -497,7 +497,7 @@ func (mi *MI_256_v1) UpdateAffinityAfterVote() {
 
 	if mi.lastAuditTarget == mi.GetID() { // if the target agent is yourself:
 		//then you would really not like the guy that targeted you, and not like whoever voted yes to vote you out
-		for agent := range mi.server.GetTeam(mi.GetID()).Agents {
+		for _, agent := range mi.Server.GetTeam(mi.GetID()).Agents {
 			affinityChange := 0
 			if mi.lastAuditStarter == agent {
 				affinityChange -= 5
@@ -514,7 +514,7 @@ func (mi *MI_256_v1) UpdateAffinityAfterVote() {
 		}
 
 	} else if mi.affinity[mi.lastAuditTarget] <= -10 { // if the vote is against someone you really dislike, you gain little change for people agreeing to it, but dislike people who disagree with it
-		for agent := range mi.server.GetTeam(mi.GetID()).Agents {
+		for _, agent := range mi.Server.GetTeam(mi.GetID()).Agents {
 			affinityChange := 0
 			if mi.lastAuditStarter == agent {
 
@@ -532,7 +532,7 @@ func (mi *MI_256_v1) UpdateAffinityAfterVote() {
 			mi.affinity[agent] += affinityChange
 		}
 	} else if mi.affinity[mi.lastAuditTarget] <= -10 { // if the vote is against someone you really like, you gain little dislike for people agreeing to it, but like people who disagree with it
-		for agent := range mi.server.GetTeam(mi.GetID()).Agents {
+		for _, agent := range mi.Server.GetTeam(mi.GetID()).Agents {
 			affinityChange := 0
 			if mi.lastAuditStarter == agent {
 				if mi.isThereCheatThisRound {
