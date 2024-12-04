@@ -75,6 +75,6 @@ type IExtendedAgent interface {
 	// Team 1 specific functions
 	Team1_ChairUpdateRanks(rankMap map[uuid.UUID]int) map[uuid.UUID]int
     Team1_AgreeRankBoundaries() [5]int
-    // OVERRIDE FOR STRATEGY: Express what you would like the ranks to be
-    Team1_GiveRankPreferences() [5]int
+    Team1_BoundaryOpinionRequestHandler(msg *Team1RankBoundaryRequestMessage)
+    Team1_BoundaryOpinionResponseHandler(msg *Team1RankBoundaryResponseMessage)
 }
