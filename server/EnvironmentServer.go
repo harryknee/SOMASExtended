@@ -30,9 +30,10 @@ type EnvironmentServer struct {
 	DataRecorder *gameRecorder.ServerDataRecorder
 
 	// server internal state
-	turn           int
-	iteration      int
-	thresholdTurns int
+	turn                   int
+	iteration              int
+	thresholdTurns         int
+	thresholdAppliedInTurn bool
 }
 
 func (cs *EnvironmentServer) RunTurn(i, j int) {
@@ -159,6 +160,7 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 
 	// check if threshold turn
 	if cs.turn%cs.thresholdTurns == 0 && cs.turn > 1 {
+		cs.thresholdAppliedInTurn = true
 		for _, agent := range cs.GetAgentMap() {
 			cs.teamsMutex.Unlock()
 			if !cs.IsAgentDead(agent.GetID()) {
@@ -572,25 +574,41 @@ func (cs *EnvironmentServer) ResetAgents() {
 
 func (cs *EnvironmentServer) RecordTurnInfo() {
 
+	// do not record if the turn number is 0
+	if cs.turn == 0 {
+		return
+	}
+
 	// agent information
 	agentRecords := []gameRecorder.AgentRecord{}
 	for _, agent := range cs.GetAgentMap() {
 		newAgentRecord := agent.RecordAgentStatus()
 		newAgentRecord.IsAlive = true
+		newAgentRecord.TurnNumber = cs.turn
+		newAgentRecord.IterationNumber = cs.iteration
 		agentRecords = append(agentRecords, newAgentRecord)
 	}
 
 	for _, agent := range cs.deadAgents {
 		newAgentRecord := agent.RecordAgentStatus()
 		newAgentRecord.IsAlive = false
+		newAgentRecord.TurnNumber = cs.turn
+		newAgentRecord.IterationNumber = cs.iteration
 		agentRecords = append(agentRecords, newAgentRecord)
 	}
 
+	// team information
 	teamRecords := []gameRecorder.TeamRecord{}
 	for _, team := range cs.Teams {
 		newTeamRecord := gameRecorder.NewTeamRecord(team.TeamID)
+		newTeamRecord.TurnNumber = cs.turn
+		newTeamRecord.IterationNumber = cs.iteration
+		newTeamRecord.TeamCommonPool = team.GetCommonPool()
 		teamRecords = append(teamRecords, newTeamRecord)
 	}
 
-	cs.DataRecorder.RecordNewTurn(agentRecords, teamRecords)
+	// common information
+	newCommonRecord := gameRecorder.NewCommonRecord(cs.turn, cs.iteration, cs.roundScoreThreshold, cs.thresholdAppliedInTurn)
+
+	cs.DataRecorder.RecordNewTurn(agentRecords, teamRecords, newCommonRecord)
 }
