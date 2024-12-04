@@ -214,8 +214,8 @@ func (t *Team1AoA) SelectNChairs(agentIds []uuid.UUID, n int) []uuid.UUID {
 * Set-up logic that can be called at the start of a turn in order for the
 * system to 'self-organise' itself and decide on institutionalised facts
 */
-func (t *Team1AoA) RunPreRollLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {
-    // Step 1: Gather initial rank boundary preferences
+func (t *Team1AoA) RunPreRollAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {
+    // Agree on boundaries
     
 }
 

@@ -10,7 +10,6 @@ type Vote struct {
 }
 
 type IArticlesOfAssociation interface {
-	RunPreRollLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent)
 	GetExpectedContribution(agentId uuid.UUID, agentScore int) int
 	GetExpectedWithdrawal(agentId uuid.UUID, agentScore int, commonPool int) int
 	SetWithdrawalAuditResult(agentId uuid.UUID, agentScore int, agentActualWithdrawal int, agentStatedWithdrawal int, commonPool int)
@@ -20,6 +19,7 @@ type IArticlesOfAssociation interface {
 	GetWithdrawalAuditResult(agentId uuid.UUID) bool
 	SetContributionAuditResult(agentId uuid.UUID, agentScore int, agentActualContribution int, agentStatedContribution int)
 	GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID
+	RunPreRollAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent)
 	RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent)
 }
 

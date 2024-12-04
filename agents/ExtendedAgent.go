@@ -584,7 +584,7 @@ func (mi *ExtendedAgent) Team1_ChairUpdateRanks(currentRanking map[uuid.UUID]int
 	// and gets the new ranks of the agents in the team
 	// according to AoA function
 	newRanking := make(map[uuid.UUID]int)
-	for agentUUID, _ := range currentRanking {
+	for agentUUID := range currentRanking {
 		newRank := mi.Server.GetTeam(agentUUID).TeamAoA.(*common.Team1AoA).GetAgentNewRank(agentUUID)
 		newRanking[agentUUID] = newRank
 	}
@@ -596,7 +596,8 @@ func (mi *ExtendedAgent) Team1_ChairUpdateRanks(currentRanking map[uuid.UUID]int
 
 /**
 * Agrees the rank boundaries as a social decision. This is called as part of
-* pre-roll logic, using various helper functions below. 
+* pre-roll logic, using various helper functions below. This function will only
+* be called by an elected chair. 
 */
 func (mi *ExtendedAgent) Team1_AgreeRankBoundaries() [5]int {
     // Step 1. Gather boundary preferences
@@ -612,15 +613,34 @@ func (mi *ExtendedAgent) Team1_AgreeRankBoundaries() [5]int {
     return elected
 }
 
+/**
+* Go through all the agents, and ask them what they would like the rank
+* boundaries to be. Their returned value is completely up to the agent
+* strategy.
+*/
 func (mi *ExtendedAgent) team1_GatherRankBoundaryPreferences() [][5]int {
     return [][5]int{{1, 2, 3, 4, 5}}
 }
 
+/**
+* Generate the candidates based off the preferences expressed by the agents
+*/
 func (mi *ExtendedAgent) team1_GenerateRankBoundaryCandidates(preferences [][5]int) [3][5]int {
     print(preferences)
     return [3][5]int{{1, 2, 3, 4, 5}, {1, 2, 3, 4, 5}, {1, 2, 3, 4, 5}}
 }
+
+/**
+* Conduct a vote on the expressed candidates, and elect a winner
+*/
 func (mi *ExtendedAgent) team1_VoteOnRankBoundaries(cands [3][5]int) [5]int {
-	// Default behaviour should just vote for the guideline rank boundaries
+	// Default behaviour just returns the first candidate
 	return cands[0]
+}
+
+/**
+* You get a say in what you think the rank boundaries should be!
+*/
+func (mi *ExtendedAgent) Team1_GiveRankPreferences() [5]int {
+    return [5]int{1, 2, 3, 4, 5}
 }
