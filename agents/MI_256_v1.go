@@ -1,9 +1,10 @@
 package agents
 
 import (
-	"fmt"
-	common "github.com/ADimoska/SOMASExtended/common"
+	"log"
 	"math/rand"
+
+	common "github.com/ADimoska/SOMASExtended/common"
 
 	"github.com/MattSScott/basePlatformSOMAS/v2/pkg/agent"
 	"github.com/google/uuid"
@@ -18,14 +19,14 @@ func Team4_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent
 	mi_256 := &MI_256_v1{
 		ExtendedAgent: GetBaseAgents(funcs, agentConfig),
 	}
-	mi_256.trueSomasTeamID = 4 // IMPORTANT: add your team number here!
+	mi_256.TrueSomasTeamID = 4 // IMPORTANT: add your team number here!
 	return mi_256
 }
 
 // ----------------------- Strategies -----------------------
 // Team-forming Strategy
 func (mi *MI_256_v1) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) []uuid.UUID {
-	fmt.Printf("Called overriden DecideTeamForming\n")
+	log.Printf("Called overriden DecideTeamForming\n")
 	invitationList := []uuid.UUID{}
 	for _, agentInfo := range agentInfoList {
 		// exclude the agent itself
@@ -48,7 +49,7 @@ func (mi *MI_256_v1) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) 
 
 // Dice Strategy
 func (mi *MI_256_v1) StickOrAgain(accumulatedScore int, prevRoll int) bool {
-	fmt.Printf("Called overriden StickOrAgain\n")
+	log.Printf("Called overriden StickOrAgain\n")
 	// TODO: implement dice strategy
 	return true
 }

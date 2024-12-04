@@ -1,7 +1,7 @@
 package agents
 
 import (
-	"fmt"
+	"log"
 	"math/rand"
 
 	"github.com/google/uuid"
@@ -40,7 +40,7 @@ type ExtendedAgent struct {
 	LastTeamID uuid.UUID // Tracks the last team the agent was part of
 
 	// for recording purpose
-	trueSomasTeamID int // your true team id! e.g. team 4 -> 4. Override this in your agent constructor
+	TrueSomasTeamID int // your true team id! e.g. team 4 -> 4. Override this in your agent constructor
 }
 
 type AgentConfig struct {
@@ -54,7 +54,7 @@ func GetBaseAgents(funcs agent.IExposedServerFunctions[common.IExtendedAgent], c
 		Server:       funcs.(common.IServer), // Type assert the server functions to IServer interface
 		Score:        configParam.InitScore,
 		VerboseLevel: configParam.VerboseLevel,
-		AoARanking:   []int{3, 2, 1, 0},
+		AoARanking:   []int{0},
 		TeamRanking:  []uuid.UUID{},
 	}
 }
@@ -77,6 +77,11 @@ func (mi *ExtendedAgent) GetTrueScore() int {
 	return mi.Score
 }
 
+// Get the agent's true team ID
+func (mi *ExtendedAgent) GetTrueSomasTeamID() int {
+	return mi.TrueSomasTeamID
+}
+
 // Setter for the server to call, in order to set the true score for this agent
 func (mi *ExtendedAgent) SetTrueScore(score int) {
 	mi.Score = score
@@ -85,10 +90,10 @@ func (mi *ExtendedAgent) SetTrueScore(score int) {
 // custom function: ask for rolling the dice
 func (mi *ExtendedAgent) StartRollingDice(instance common.IExtendedAgent) {
 	if mi.VerboseLevel > 10 {
-		fmt.Printf("%s is rolling the Dice\n", mi.GetID())
+		log.Printf("%s is rolling the Dice\n", mi.GetID())
 	}
 	if mi.VerboseLevel > 9 {
-		fmt.Println("---------------------")
+		log.Println("---------------------")
 	}
 	// TODO: implement the logic in environment, do a random of 3d6 now with 50% chance to stick
 	mi.LastScore = -1
@@ -115,7 +120,7 @@ func (mi *ExtendedAgent) StartRollingDice(instance common.IExtendedAgent) {
 		} else {
 			// burst, lose all turn score
 			if mi.VerboseLevel > 4 {
-				fmt.Printf("%s **BURSTED!** round: %v, current score: %v\n", mi.GetID(), rounds, currentScore)
+				log.Printf("%s **BURSTED!** round: %v, current score: %v\n", mi.GetID(), rounds, currentScore)
 			}
 			turnScore = 0
 			break
@@ -128,14 +133,14 @@ func (mi *ExtendedAgent) StartRollingDice(instance common.IExtendedAgent) {
 	mi.Score += turnScore
 
 	if mi.VerboseLevel > 4 {
-		fmt.Printf("%s's turn score: %v, total score: %v\n", mi.GetID(), turnScore, mi.Score)
+		log.Printf("%s's turn score: %v, total score: %v\n", mi.GetID(), turnScore, mi.Score)
 	}
 }
 
 // stick or again
 func (mi *ExtendedAgent) StickOrAgain(accumulatedScore int, prevRoll int) bool {
 	// if mi.verboseLevel > 8 {
-	// 	fmt.Printf("%s is deciding to stick or again\n", mi.GetID())
+	// 	log.Printf("%s is deciding to stick or again\n", mi.GetID())
 	// }
 	return rand.Intn(2) == 0
 }
@@ -143,14 +148,14 @@ func (mi *ExtendedAgent) StickOrAgain(accumulatedScore int, prevRoll int) bool {
 // decide to stick
 func (mi *ExtendedAgent) DecideStick() {
 	if mi.VerboseLevel > 6 {
-		fmt.Printf("%s decides to [STICK], last score: %v\n", mi.GetID(), mi.LastScore)
+		log.Printf("%s decides to [STICK], last score: %v\n", mi.GetID(), mi.LastScore)
 	}
 }
 
 // decide to roll again
 func (mi *ExtendedAgent) DecideRollAgain() {
 	if mi.VerboseLevel > 6 {
-		fmt.Printf("%s decides to ROLL AGAIN, last score: %v\n", mi.GetID(), mi.LastScore)
+		log.Printf("%s decides to ROLL AGAIN, last score: %v\n", mi.GetID(), mi.LastScore)
 	}
 }
 
@@ -159,36 +164,17 @@ func (mi *ExtendedAgent) DecideRollAgain() {
 // This function MUST return the same value when called multiple times in the same turn
 func (mi *ExtendedAgent) GetActualContribution(instance common.IExtendedAgent) int {
 	if mi.HasTeam() {
-		contribution := instance.DecideContribution()
+		contribution := mi.Server.GetTeam(mi.GetID()).TeamAoA.GetExpectedContribution(mi.GetID(), mi.GetTrueScore())
+		if mi.GetTrueScore() < contribution {
+			contribution = mi.GetTrueScore() // give all score if less than expected
+		}
 		if mi.VerboseLevel > 6 {
-			fmt.Printf("%s is contributing %d to the common pool and thinks the common pool size is %d\n", mi.GetID(), contribution, mi.Server.GetTeam(mi.GetID()).GetCommonPool())
+			log.Printf("%s is contributing %d to the common pool and thinks the common pool size is %d\n", mi.GetID(), contribution, mi.Server.GetTeam(mi.GetID()).GetCommonPool())
 		}
 		return contribution
 	} else {
 		if mi.VerboseLevel > 6 {
-			fmt.Printf("%s has no team, skipping contribution\n", mi.GetID())
-		}
-		return 0
-	}
-}
-
-func (mi *ExtendedAgent) DecideContribution() int {
-	// first check if the agent has a team
-	if !mi.HasTeam() {
-		return 0
-	}
-	// MVP: contribute exactly as defined in AoA
-	if mi.Server.GetTeam(mi.GetID()).TeamAoA != nil {
-		aoaExpectedContribution := mi.Server.GetTeam(mi.GetID()).TeamAoA.GetExpectedContribution(mi.GetID(), mi.GetTrueScore())
-		// double check if score in agent is sufficient (this should be handled by AoA though)
-		if mi.GetTrueScore() < aoaExpectedContribution {
-			return mi.GetTrueScore() // give all score if less than expected
-		}
-		return aoaExpectedContribution
-	} else {
-		if mi.VerboseLevel > 6 {
-			// should not happen!
-			fmt.Printf("[WARNING] Agent %s has no AoA, contributing 0\n", mi.GetID())
+			log.Printf("%s has no team, skipping contribution\n", mi.GetID())
 		}
 		return 0
 	}
@@ -202,6 +188,7 @@ func (mi *ExtendedAgent) GetStatedContribution(instance common.IExtendedAgent) i
 	if !mi.HasTeam() {
 		return 0
 	}
+
 	// Hardcoded stated
 	statedContribution := instance.GetActualContribution(instance)
 	return statedContribution
@@ -213,9 +200,12 @@ func (mi *ExtendedAgent) GetActualWithdrawal(instance common.IExtendedAgent) int
 	if !mi.HasTeam() {
 		return 0
 	}
-	currentPool := mi.Server.GetTeam(mi.GetID()).GetCommonPool()
-	withdrawal := instance.DecideWithdrawal()
-	fmt.Printf("%s is withdrawing %d from the common pool of size %d\n", mi.GetID(), withdrawal, currentPool)
+	commonPool := mi.Server.GetTeam(mi.GetID()).GetCommonPool()
+	withdrawal := mi.Server.GetTeam(mi.GetID()).TeamAoA.GetExpectedWithdrawal(mi.GetID(), mi.GetTrueScore(), commonPool)
+	if commonPool < withdrawal {
+		withdrawal = commonPool
+	}
+	log.Printf("%s is withdrawing %d from the common pool of size %d\n", mi.GetID(), withdrawal, commonPool)
 	return withdrawal
 }
 
@@ -227,29 +217,7 @@ func (mi *ExtendedAgent) GetStatedWithdrawal(instance common.IExtendedAgent) int
 		return 0
 	}
 	// Currently, assume stated withdrawal matches actual withdrawal
-	return instance.DecideWithdrawal()
-}
-
-// Decide the withdrawal amount based on AoA and current pool size
-func (mi *ExtendedAgent) DecideWithdrawal() int {
-	// first check if the agent has a team
-	if !mi.HasTeam() {
-		return 0
-	}
-	if mi.Server.GetTeam(mi.GetID()).TeamAoA != nil {
-		// double check if score in agent is sufficient (this should be handled by AoA though)
-		commonPool := mi.Server.GetTeam(mi.GetID()).GetCommonPool()
-		aoaExpectedWithdrawal := mi.Server.GetTeam(mi.GetID()).TeamAoA.GetExpectedWithdrawal(mi.GetID(), mi.GetTrueScore(), commonPool)
-		if commonPool < aoaExpectedWithdrawal {
-			return commonPool
-		}
-		return aoaExpectedWithdrawal
-	} else {
-		if mi.VerboseLevel > 6 {
-			fmt.Printf("[WARNING] Agent %s has no AoA, withdrawing 0\n", mi.GetID())
-		}
-		return 0
-	}
+	return instance.GetActualContribution(instance)
 }
 
 /*
@@ -264,7 +232,7 @@ func (mi *ExtendedAgent) StickOrAgainFor(agentId uuid.UUID, accumulatedScore int
 
 // dev function
 func (mi *ExtendedAgent) LogSelfInfo() {
-	fmt.Printf("[Agent %s] score: %v\n", mi.GetID(), mi.Score)
+	log.Printf("[Agent %s] score: %v\n", mi.GetID(), mi.Score)
 }
 
 // Agent returns their preference for an audit on contribution
@@ -290,12 +258,12 @@ func (mi *ExtendedAgent) SetAgentWithdrawalAuditResult(agentID uuid.UUID, result
 // ----Withdrawal------- Messaging functions -----------------------
 
 func (mi *ExtendedAgent) HandleTeamFormationMessage(msg *common.TeamFormationMessage) {
-	fmt.Printf("Agent %s received team forming invitation from %s\n", mi.GetID(), msg.GetSender())
+	log.Printf("Agent %s received team forming invitation from %s\n", mi.GetID(), msg.GetSender())
 
 	// Already in a team - reject invitation
 	if mi.TeamID != (uuid.UUID{}) {
 		if mi.VerboseLevel > 6 {
-			fmt.Printf("Agent %s rejected invitation from %s - already in team %v\n",
+			log.Printf("Agent %s rejected invitation from %s - already in team %v\n",
 				mi.GetID(), msg.GetSender(), mi.TeamID)
 		}
 		return
@@ -313,7 +281,7 @@ func (mi *ExtendedAgent) HandleTeamFormationMessage(msg *common.TeamFormationMes
 
 func (mi *ExtendedAgent) HandleContributionMessage(msg *common.ContributionMessage) {
 	if mi.VerboseLevel > 8 {
-		fmt.Printf("Agent %s received contribution notification from %s: amount=%d\n",
+		log.Printf("Agent %s received contribution notification from %s: amount=%d\n",
 			mi.GetID(), msg.GetSender(), msg.StatedAmount)
 	}
 
@@ -322,7 +290,7 @@ func (mi *ExtendedAgent) HandleContributionMessage(msg *common.ContributionMessa
 
 func (mi *ExtendedAgent) HandleScoreReportMessage(msg *common.ScoreReportMessage) {
 	if mi.VerboseLevel > 8 {
-		fmt.Printf("Agent %s received score report from %s: score=%d\n",
+		log.Printf("Agent %s received score report from %s: score=%d\n",
 			mi.GetID(), msg.GetSender(), msg.TurnScore)
 	}
 
@@ -331,11 +299,25 @@ func (mi *ExtendedAgent) HandleScoreReportMessage(msg *common.ScoreReportMessage
 
 func (mi *ExtendedAgent) HandleWithdrawalMessage(msg *common.WithdrawalMessage) {
 	if mi.VerboseLevel > 8 {
-		fmt.Printf("Agent %s received withdrawal notification from %s: amount=%d\n",
+		log.Printf("Agent %s received withdrawal notification from %s: amount=%d\n",
 			mi.GetID(), msg.GetSender(), msg.StatedAmount)
 	}
 
 	// Team's agent should implement logic to store or process the reported withdrawal amount as desired
+}
+
+func (mi *ExtendedAgent) HandleAgentOpinionRequestMessage(msg *common.AgentOpinionRequestMessage) {
+	// Team's agent should implement logic to respond to opinion request as desired
+	log.Printf("Agent %s received opinion request from %s\n", mi.GetID(), msg.AgentID)
+	opinion := 70
+	opinionResponseMsg := mi.CreateAgentOpinionResponseMessage(msg.AgentID, opinion)
+	log.Printf("Sending opinion response to %s\n", msg.AgentID)
+	mi.SendMessage(opinionResponseMsg, msg.AgentID) // Sent asynchronously, because this is "extra information"
+}
+
+func (mi *ExtendedAgent) HandleAgentOpinionResponseMessage(msg *common.AgentOpinionResponseMessage) {
+	// Team's agent should implement logic to store or process opinion response as desired
+	log.Printf("Agent %s received opinion response from %s: opinion=%d\n", mi.GetID(), msg.GetSender(), msg.AgentOpinion)
 }
 
 func (mi *ExtendedAgent) BroadcastSyncMessageToTeam(msg message.IMessage[common.IExtendedAgent]) {
@@ -348,16 +330,16 @@ func (mi *ExtendedAgent) BroadcastSyncMessageToTeam(msg message.IMessage[common.
 	}
 }
 
-func (mi *ExtendedAgent) StateContributionToTeam() {
+func (mi *ExtendedAgent) StateContributionToTeam(instance common.IExtendedAgent) {
 	// Broadcast contribution to team
-	statedContribution := mi.GetStatedContribution(mi)
+	statedContribution := instance.GetStatedContribution(instance)
 	contributionMsg := mi.CreateContributionMessage(statedContribution)
 	mi.BroadcastSyncMessageToTeam(contributionMsg)
 }
 
-func (mi *ExtendedAgent) StateWithdrawalToTeam() {
+func (mi *ExtendedAgent) StateWithdrawalToTeam(instance common.IExtendedAgent) {
 	// Broadcast withdrawal to team
-	statedWithdrawal := mi.GetStatedWithdrawal(mi)
+	statedWithdrawal := instance.GetStatedWithdrawal(instance)
 	withdrawalMsg := mi.CreateWithdrawalMessage(statedWithdrawal)
 	mi.BroadcastSyncMessageToTeam(withdrawalMsg)
 }
@@ -391,6 +373,21 @@ func (mi *ExtendedAgent) CreateWithdrawalMessage(statedAmount int) *common.Withd
 	}
 }
 
+func (mi *ExtendedAgent) CreateAgentOpinionRequestMessage(agentID uuid.UUID) *common.AgentOpinionRequestMessage {
+	return &common.AgentOpinionRequestMessage{
+		BaseMessage: mi.CreateBaseMessage(),
+		AgentID:     agentID,
+	}
+}
+
+func (mi *ExtendedAgent) CreateAgentOpinionResponseMessage(agentID uuid.UUID, opinion int) *common.AgentOpinionResponseMessage {
+	return &common.AgentOpinionResponseMessage{
+		BaseMessage:  mi.CreateBaseMessage(),
+		AgentID:      agentID,
+		AgentOpinion: opinion,
+	}
+}
+
 // ----------------------- Debug functions -----------------------
 
 func Roll3Dice() int {
@@ -411,7 +408,7 @@ func Roll3Dice() int {
 func (mi *ExtendedAgent) StartTeamForming(instance common.IExtendedAgent, agentInfoList []common.ExposedAgentInfo) {
 	// TODO: implement team forming logic
 	if mi.VerboseLevel > 6 {
-		fmt.Printf("%s is starting team formation\n", mi.GetID())
+		log.Printf("%s is starting team formation\n", mi.GetID())
 	}
 
 	chosenAgents := instance.DecideTeamForming(agentInfoList)
@@ -450,26 +447,26 @@ func (mi *ExtendedAgent) SendTeamFormingInvitation(agentIDs []uuid.UUID) {
 			Message:     "Would you like to form a team?",
 		}
 		// Debug print to check message contents
-		fmt.Printf("Sending invitation: sender=%v, teamID=%v, receiver=%v\n", mi.GetID(), mi.GetTeamID(), agentID)
+		log.Printf("Sending invitation: sender=%v, teamID=%v, receiver=%v\n", mi.GetID(), mi.GetTeamID(), agentID)
 		mi.SendSynchronousMessage(invitationMsg, agentID)
 	}
 }
 
 func (mi *ExtendedAgent) createNewTeam(senderID uuid.UUID) {
-	fmt.Printf("Agent %s is creating a new team\n", mi.GetID())
+	log.Printf("Agent %s is creating a new team\n", mi.GetID())
 	teamIDs := []uuid.UUID{mi.GetID(), senderID}
 	newTeamID := mi.Server.CreateAndInitTeamWithAgents(teamIDs)
 
 	if newTeamID == (uuid.UUID{}) {
 		if mi.VerboseLevel > 6 {
-			fmt.Printf("Agent %s failed to create a new team\n", mi.GetID())
+			log.Printf("Agent %s failed to create a new team\n", mi.GetID())
 		}
 		return
 	}
 
 	mi.TeamID = newTeamID
 	if mi.VerboseLevel > 6 {
-		fmt.Printf("Agent %s created a new team with ID %v\n", mi.GetID(), newTeamID)
+		log.Printf("Agent %s created a new team with ID %v\n", mi.GetID(), newTeamID)
 	}
 }
 
@@ -477,7 +474,7 @@ func (mi *ExtendedAgent) joinExistingTeam(teamID uuid.UUID) {
 	mi.TeamID = teamID
 	mi.Server.AddAgentToTeam(mi.GetID(), teamID)
 	if mi.VerboseLevel > 6 {
-		fmt.Printf("Agent %s joined team %v\n", mi.GetID(), teamID)
+		log.Printf("Agent %s joined team %v\n", mi.GetID(), teamID)
 	}
 }
 
@@ -528,16 +525,37 @@ func (mi *ExtendedAgent) SetTeamRanking(teamRanking []uuid.UUID) {
 }
 
 // ----------------------- Data Recording Functions -----------------------
-func (mi *ExtendedAgent) RecordAgentStatus() gameRecorder.AgentRecord {
+func (mi *ExtendedAgent) RecordAgentStatus(instance common.IExtendedAgent) gameRecorder.AgentRecord {
 	record := gameRecorder.NewAgentRecord(
-		mi.GetID(),
-		mi.trueSomasTeamID, // mi.GetTrueSomasTeamID()
-		mi.GetTrueScore(),
-		mi.GetActualContribution(mi),
-		mi.GetStatedContribution(mi),
-		mi.GetActualWithdrawal(mi),
-		mi.GetStatedWithdrawal(mi),
-		mi.GetTeamID(),
+		instance.GetID(),
+		instance.GetTrueSomasTeamID(),
+		instance.GetTrueScore(),
+		instance.GetStatedContribution(instance),
+		instance.GetActualContribution(instance),
+		instance.GetActualWithdrawal(instance),
+		instance.GetStatedWithdrawal(instance),
+		instance.GetTeamID(),
 	)
 	return record
+}
+
+// ----------------------- Team 1 AoA Functions -----------------------
+
+func (mi *ExtendedAgent) Team1_ChairUpdateRanks(currentRanking map[uuid.UUID]int) map[uuid.UUID]int {
+	// Chair iterates through existing rank map in team
+	// and gets the new ranks of the agents in the team
+	// according to AoA function
+	newRanking := make(map[uuid.UUID]int)
+	for agentUUID, _ := range currentRanking {
+		newRank := mi.Server.GetTeam(agentUUID).TeamAoA.(*common.Team1AoA).GetAgentNewRank(agentUUID)
+		newRanking[agentUUID] = newRank
+	}
+
+	// Returns a map of agent UUIDs to new Rank (int)
+	return newRanking
+}
+
+func (mi *ExtendedAgent) Team1_VoteOnRankBoundaries(initialBoundaries [5]int) [5]int {
+	// Default behaviour should just vote for the guideline rank boundaries
+	return initialBoundaries
 }
