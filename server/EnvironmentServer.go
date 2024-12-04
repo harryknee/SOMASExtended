@@ -68,6 +68,7 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 			agentStatedContribution := agent.GetStatedContribution(agent)
 
 			agent.StateContributionToTeam()
+			agent.UpdateStateAfterContribution()
 			agentScore := agent.GetTrueScore()
 			// Update audit result for this agent
 			team.TeamAoA.SetContributionAuditResult(agentID, agentScore, agentActualContribution, agentStatedContribution)
@@ -118,6 +119,7 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 
 			// Update the common pool after each withdrawal so agents can see the updated pool before deciding their withdrawal.
 			//  Different to the contribution phase!
+			agent.UpdateStateAfterContributionAudit()
 			team.SetCommonPool(currentPool - agentActualWithdrawal)
 			fmt.Printf("[server] Agent %v withdrew %v. Remaining pool: %v\n", agentID, agentActualWithdrawal, team.GetCommonPool())
 		}
@@ -135,6 +137,7 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 				continue
 			}
 			agent.StateWithdrawalToTeam()
+			agent.UpdateStateAfterWithdrawal()
 		}
 
 		// Initiate Withdrawal Audit vote
@@ -151,8 +154,11 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 			for _, agentID := range team.Agents {
 				agent := cs.GetAgentMap()[agentID]
 				agent.SetAgentWithdrawalAuditResult(agentToAudit, auditResult)
+				agent.UpdateStateAfterWithdrawalAudit()
 			}
+
 		}
+
 	}
 
 	// TODO: Reallocate agents who left their teams during the turn

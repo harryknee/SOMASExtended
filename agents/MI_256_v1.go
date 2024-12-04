@@ -78,7 +78,39 @@ func Team4_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent
 }
 
 // ----functions to calculate the data of other team members------------
-func (mi *MI_256_v1) UpdateTeamDeclaredRolls() {
+func (mi *MI_256_v1) UpdateTeamDeclaredContribution() {
+	for _, agent := range mi.Server.GetTeam(mi.GetID()).Agents {
+		mi.teamAgentsDeclaredContribution[agent] = mi.GetStatedContribution(mi.Server.AccessAgentByID(agent))
+		// numAgent += 1
+	}
+}
+func (mi *MI_256_v1) UpdateTeamDeclaredWithdrawal() {
+	for _, agent := range mi.Server.GetTeam(mi.GetID()).Agents {
+		mi.teamAgentsDeclaredWithdraw[agent] = mi.GetStatedWithdrawal(mi.Server.AccessAgentByID(agent))
+		// numAgent += 1
+	}
+}
+
+func (mi *MI_256_v1) UpdateStateAfterContribution() {
+	mi.UpdateTeamDeclaredContribution()
+	mi.UpdateAffinityAfterContribute()
+
+}
+func (mi *MI_256_v1) UpdateStateAfterWithdrawal() {
+	mi.UpdateTeamDeclaredWithdrawal()
+	mi.UpdateAffinityAfterWithdraw()
+
+}
+func (mi *MI_256_v1) UpdateStateAfterContributionAudit() {
+	mi.UpdateAffinityAfterVote()
+	mi.UpdateAffinityAfterAudit()
+
+}
+func (mi *MI_256_v1) UpdateStateAfterWithdrawalAudit() {
+	mi.UpdateAffinityAfterVote()
+	mi.UpdateAffinityAfterAudit()
+	mi.UpdateMoodAfterAuditionEnd()
+
 }
 
 //------functions to calculated the expected AOA contributions and stuff for all agents -------------------------------
@@ -86,11 +118,13 @@ func (mi *MI_256_v1) UpdateTeamDeclaredRolls() {
 func (mi *MI_256_v1) CalcAOAContibution() int {
 
 	mi.AoAExpectedContribution = 5
+	mi.isAoAContributionFixed = true
 	return mi.AoAExpectedContribution
 
 }
 func (mi *MI_256_v1) CalcAOAWithdrawal() int {
 	mi.AoAExpectedWithdrawal = 5
+	mi.isAoAWithdrawalFixed = true
 	return mi.AoAExpectedWithdrawal
 }
 func (mi *MI_256_v1) CalcAOAAuditCost() {
@@ -167,6 +201,7 @@ func (mi *MI_256_v1) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) 
 
 // Dice Strategy
 func (mi *MI_256_v1) StickOrAgain(accumulatedScore int, prevRoll int) bool {
+
 	fmt.Printf("Called overriden StickOrAgain\n")
 
 	// the higher the mood, the more risky the roll dice strategy will be
@@ -175,19 +210,19 @@ func (mi *MI_256_v1) StickOrAgain(accumulatedScore int, prevRoll int) bool {
 	threshMid := 11
 	threshHigh := 14
 	if mi.mood > 5 { // be greedy
-		if mi.LastScore < threshHigh {
+		if prevRoll < threshHigh {
 			return true
 		} else {
 			return false
 		}
 	} else if (-5 < mi.mood) && (mi.mood < 5) {
-		if mi.LastScore < threshMid {
+		if prevRoll < threshMid {
 			return true
 		} else {
 			return false
 		}
 	} else {
-		if mi.LastScore < threshLow {
+		if prevRoll < threshLow {
 			return true
 		} else {
 			return false
@@ -203,6 +238,7 @@ func (mi *MI_256_v1) StickOrAgain(accumulatedScore int, prevRoll int) bool {
 // definition of Mood: The willingness to take actions which diverges from abosolute neutral
 // Contribution Strategy
 func (mi *MI_256_v1) DecideContribution() int {
+	mi.CalcAOAContibution()
 	if mi.Score == 0 {
 		return 0
 	}
@@ -300,6 +336,8 @@ func (mi *MI_256_v1) GetStatedContribution(instance common.IExtendedAgent) int {
 
 // Withdrawal Strategy
 func (mi *MI_256_v1) DecideWithdrawal() int {
+	mi.CalcAOAWithdrawal()
+
 	mi.IntendedWithdrawal = 0
 	Withdrawal_percentage := 0.0
 	// CurrentScore = mi.Score
@@ -407,7 +445,7 @@ func (mi *MI_256_v1) DecideAudit() map[uuid.UUID]int {
 		//we model evil and good with different standard deviations, with chaotic being high standard deviation,
 		abs_neutral_mean = 0.1
 		neutral_evil_mean = 0.15
-		neutral_good_mean = 0.8
+		neutral_good_mean = 0.05
 
 		lawful_good_mean = 0.05
 		lawful_evil_mean = 0.1
@@ -569,7 +607,7 @@ func (mi *MI_256_v1) Initialize_opninions() {
 
 }
 
-func (mi *MI_256_v1) startTurnUpdate() {
+func (mi *MI_256_v1) InitializeStartofTurn() {
 	// this function updates the agent states every start of turn, refreshing states if needed
 	mi.UpdateMoodTurnStart()
 	mi.haveIlied = false
@@ -815,6 +853,6 @@ func (mi *MI_256_v1) UpdateAffinityAfterVote() {
 
 }
 func (mi *MI_256_v1) UpdateAffinityAfterAudit() {
-	// not used currently, intergrated into vote
+	//if someone fails or succeeds an audit, then you would gain impression of them
 
 }

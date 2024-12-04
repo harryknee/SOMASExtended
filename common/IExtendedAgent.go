@@ -66,4 +66,10 @@ type IExtendedAgent interface {
 
 	// Data Recording
 	RecordAgentStatus() gameRecorder.AgentRecord
+
+	//Agent internal state update
+	UpdateStateAfterContribution()
+	UpdateStateAfterWithdrawal()
+	UpdateStateAfterContributionAudit()
+	UpdateStateAfterWithdrawalAudit()
 }

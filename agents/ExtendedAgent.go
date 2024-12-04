@@ -82,8 +82,13 @@ func (mi *ExtendedAgent) SetTrueScore(score int) {
 	mi.Score = score
 }
 
+func (mi *ExtendedAgent) InitializeStartofTurn() {
+
+}
+
 // custom function: ask for rolling the dice
 func (mi *ExtendedAgent) StartRollingDice(instance common.IExtendedAgent) {
+	mi.InitializeStartofTurn()
 	if mi.VerboseLevel > 10 {
 		fmt.Printf("%s is rolling the Dice\n", mi.GetID())
 	}
@@ -540,4 +545,18 @@ func (mi *ExtendedAgent) RecordAgentStatus() gameRecorder.AgentRecord {
 		mi.GetTeamID(),
 	)
 	return record
+}
+
+// -------------------------------agent state udpate functions-----------------------------
+func (mi *ExtendedAgent) UpdateStateAfterContribution() {
+	// overwrite if your agent need to update internal state at this stage.
+}
+func (mi *ExtendedAgent) UpdateStateAfterWithdrawal() {
+	// overwrite if your agent need to update internal state at this stage.
+}
+func (mi *ExtendedAgent) UpdateStateAfterContributionAudit() {
+	// overwrite if your agent need to update internal state at this stage.
+}
+func (mi *ExtendedAgent) UpdateStateAfterWithdrawalAudit() {
+	// overwrite if your agent need to update internal state at this stage.
 }
