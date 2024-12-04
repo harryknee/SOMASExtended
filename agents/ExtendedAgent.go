@@ -164,7 +164,10 @@ func (mi *ExtendedAgent) DecideRollAgain() {
 // This function MUST return the same value when called multiple times in the same turn
 func (mi *ExtendedAgent) GetActualContribution(instance common.IExtendedAgent) int {
 	if mi.HasTeam() {
-		contribution := instance.DecideContribution()
+		contribution := mi.Server.GetTeam(mi.GetID()).TeamAoA.GetExpectedContribution(mi.GetID(), mi.GetTrueScore())
+		if mi.GetTrueScore() < contribution {
+			contribution = mi.GetTrueScore() // give all score if less than expected
+		}
 		if mi.VerboseLevel > 6 {
 			log.Printf("%s is contributing %d to the common pool and thinks the common pool size is %d\n", mi.GetID(), contribution, mi.Server.GetTeam(mi.GetID()).GetCommonPool())
 		}
@@ -172,28 +175,6 @@ func (mi *ExtendedAgent) GetActualContribution(instance common.IExtendedAgent) i
 	} else {
 		if mi.VerboseLevel > 6 {
 			log.Printf("%s has no team, skipping contribution\n", mi.GetID())
-		}
-		return 0
-	}
-}
-
-func (mi *ExtendedAgent) DecideContribution() int {
-	// first check if the agent has a team
-	if !mi.HasTeam() {
-		return 0
-	}
-	// MVP: contribute exactly as defined in AoA
-	if mi.Server.GetTeam(mi.GetID()).TeamAoA != nil {
-		aoaExpectedContribution := mi.Server.GetTeam(mi.GetID()).TeamAoA.GetExpectedContribution(mi.GetID(), mi.GetTrueScore())
-		// double check if score in agent is sufficient (this should be handled by AoA though)
-		if mi.GetTrueScore() < aoaExpectedContribution {
-			return mi.GetTrueScore() // give all score if less than expected
-		}
-		return aoaExpectedContribution
-	} else {
-		if mi.VerboseLevel > 6 {
-			// should not happen!
-			log.Printf("[WARNING] Agent %s has no AoA, contributing 0\n", mi.GetID())
 		}
 		return 0
 	}
@@ -219,9 +200,12 @@ func (mi *ExtendedAgent) GetActualWithdrawal(instance common.IExtendedAgent) int
 	if !mi.HasTeam() {
 		return 0
 	}
-	currentPool := mi.Server.GetTeam(mi.GetID()).GetCommonPool()
-	withdrawal := instance.DecideWithdrawal()
-	log.Printf("%s is withdrawing %d from the common pool of size %d\n", mi.GetID(), withdrawal, currentPool)
+	commonPool := mi.Server.GetTeam(mi.GetID()).GetCommonPool()
+	withdrawal := mi.Server.GetTeam(mi.GetID()).TeamAoA.GetExpectedWithdrawal(mi.GetID(), mi.GetTrueScore(), commonPool)
+	if commonPool < withdrawal {
+		withdrawal = commonPool
+	}
+	log.Printf("%s is withdrawing %d from the common pool of size %d\n", mi.GetID(), withdrawal, commonPool)
 	return withdrawal
 }
 
@@ -233,29 +217,7 @@ func (mi *ExtendedAgent) GetStatedWithdrawal(instance common.IExtendedAgent) int
 		return 0
 	}
 	// Currently, assume stated withdrawal matches actual withdrawal
-	return instance.DecideWithdrawal()
-}
-
-// Decide the withdrawal amount based on AoA and current pool size
-func (mi *ExtendedAgent) DecideWithdrawal() int {
-	// first check if the agent has a team
-	if !mi.HasTeam() {
-		return 0
-	}
-	if mi.Server.GetTeam(mi.GetID()).TeamAoA != nil {
-		// double check if score in agent is sufficient (this should be handled by AoA though)
-		commonPool := mi.Server.GetTeam(mi.GetID()).GetCommonPool()
-		aoaExpectedWithdrawal := mi.Server.GetTeam(mi.GetID()).TeamAoA.GetExpectedWithdrawal(mi.GetID(), mi.GetTrueScore(), commonPool)
-		if commonPool < aoaExpectedWithdrawal {
-			return commonPool
-		}
-		return aoaExpectedWithdrawal
-	} else {
-		if mi.VerboseLevel > 6 {
-			log.Printf("[WARNING] Agent %s has no AoA, withdrawing 0\n", mi.GetID())
-		}
-		return 0
-	}
+	return instance.GetActualContribution(instance)
 }
 
 /*
@@ -596,4 +558,17 @@ func (mi *ExtendedAgent) Team1_ChairUpdateRanks(currentRanking map[uuid.UUID]int
 func (mi *ExtendedAgent) Team1_VoteOnRankBoundaries(initialBoundaries [5]int) [5]int {
 	// Default behaviour should just vote for the guideline rank boundaries
 	return initialBoundaries
+}
+
+// ----------------------- Team 2 AoA Functions -----------------------
+
+func(mi *ExtendedAgent) Team2_GetLeaderVote() common.Vote {
+	// Shouldn't happen, but if it does, then vote for yourself
+	if mi.TeamID == uuid.Nil {
+		return common.CreateVote(1, mi.GetID(), mi.GetID())
+	}
+
+	// Pending on more team information to see who to vote for
+
+	return common.CreateVote(1, mi.GetID(), mi.GetID())
 }
