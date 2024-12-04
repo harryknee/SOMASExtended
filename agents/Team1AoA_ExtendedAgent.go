@@ -29,11 +29,11 @@ func (mi *ExtendedAgent) Team1_ChairUpdateRanks(currentRanking map[uuid.UUID]int
 * be called by an elected chair
  */
 func (mi *ExtendedAgent) Team1_AgreeRankBoundaries() [5]int {
-	// Step 1. Gather boundary opinions
-	mi.team1_GatherRankBoundaryOpinions()
+	// Step 1. Gather boundary proposals
+	mi.team1_GatherRankBoundaryProposals()
 
 	// Step 2. Generate candidates using statistical analysis of individual
-	// agent opinions, providing 3 options to choose from
+	// agent proposals, providing 3 options to choose from
 	cands := mi.team1_GenerateRankBoundaryCandidates()
 
 	// Step 3. Conduct a vote on the candidates
@@ -47,7 +47,7 @@ func (mi *ExtendedAgent) Team1_AgreeRankBoundaries() [5]int {
 * boundaries to be. Their returned value is completely up to the agent
 * strategy.
  */
-func (mi *ExtendedAgent) team1_GatherRankBoundaryOpinions() {
+func (mi *ExtendedAgent) team1_GatherRankBoundaryProposals() {
 
 	// Same request for all agents
 	req := &common.Team1RankBoundaryRequestMessage{
@@ -56,9 +56,9 @@ func (mi *ExtendedAgent) team1_GatherRankBoundaryOpinions() {
 
 	// Clear temp variable - this is just the location that the chair will add
 	// all the data to as it comes into requests
-	mi.team1RankBoundaryOpinions = mi.team1RankBoundaryOpinions[0:]
+	mi.team1RankBoundaryProposals = mi.team1RankBoundaryProposals[0:]
 
-	// Iterate over all agents and ask them for their opinions. We do not
+	// Iterate over all agents and ask them for their proposals. We do not
 	// store who each vote came from to enforce anonymity
 	for _, agentID := range mi.Server.GetAgentsInTeam(mi.TeamID) {
 		mi.SendSynchronousMessage(req, agentID)
@@ -66,7 +66,7 @@ func (mi *ExtendedAgent) team1_GatherRankBoundaryOpinions() {
 }
 
 /**
-* Generate the candidates based off the opinions expressed by the agents
+* Generate the candidates based off the proposals expressed by the agents
  */
 func (mi *ExtendedAgent) team1_GenerateRankBoundaryCandidates() [3][5]int {
 	return [3][5]int{{1, 2, 3, 4, 5}, {1, 2, 3, 4, 5}, {1, 2, 3, 4, 5}}
@@ -84,7 +84,7 @@ func (mi *ExtendedAgent) team1_VoteOnRankBoundaries(cands [3][5]int) [5]int {
 * BASE IMPLEMENTATION - Always returns the same boundaries.
 * OVERRIDE - You get a say in what you think the rank boundaries should be!
  */
-func (mi *ExtendedAgent) Team1_BoundaryOpinionRequestHandler(msg *common.Team1RankBoundaryRequestMessage) {
+func (mi *ExtendedAgent) Team1_BoundaryProposalRequestHandler(msg *common.Team1RankBoundaryRequestMessage) {
 	bounds := [5]int{10, 20, 30, 40, 50}
 
 	resp := &common.Team1RankBoundaryResponseMessage{
@@ -95,13 +95,13 @@ func (mi *ExtendedAgent) Team1_BoundaryOpinionRequestHandler(msg *common.Team1Ra
 	mi.SendSynchronousMessage(resp, msg.GetSender())
 }
 
-func (mi *ExtendedAgent) Team1_BoundaryOpinionResponseHandler(msg *common.Team1RankBoundaryResponseMessage) {
-	log.Printf("Chair %v received rank boundary opinion %v from %v", mi.GetID(), msg.Bounds, msg.GetSender())
-	mi.team1RankBoundaryOpinions = append(mi.team1RankBoundaryOpinions, msg.Bounds)
+func (mi *ExtendedAgent) Team1_BoundaryProposalResponseHandler(msg *common.Team1RankBoundaryResponseMessage) {
+	log.Printf("Chair %v received rank boundary proposal %v from %v", mi.GetID(), msg.Bounds, msg.GetSender())
+	mi.team1RankBoundaryProposals = append(mi.team1RankBoundaryProposals, msg.Bounds)
 	mi.SignalMessagingComplete()
 }
 
 // Returns the non-exported function for testing
 func (mi *ExtendedAgent) TestableGatherFunc() func() {
-	return mi.team1_GatherRankBoundaryOpinions
+	return mi.team1_GatherRankBoundaryProposals
 }

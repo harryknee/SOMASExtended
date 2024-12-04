@@ -43,7 +43,7 @@ type ExtendedAgent struct {
 	TrueSomasTeamID int // your true team id! e.g. team 4 -> 4. Override this in your agent constructor
 
 	// Team1 AoA Agent Memory
-	team1RankBoundaryOpinions [][5]int
+	team1RankBoundaryProposals [][5]int
 }
 
 type AgentConfig struct {

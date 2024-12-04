@@ -75,9 +75,9 @@ func (msg *AgentOpinionResponseMessage) InvokeMessageHandler(agent IExtendedAgen
 }
 
 func (msg *Team1RankBoundaryRequestMessage) InvokeMessageHandler(agent IExtendedAgent) {
-	agent.Team1_BoundaryOpinionRequestHandler(msg)
+	agent.Team1_BoundaryProposalRequestHandler(msg)
 }
 
 func (msg *Team1RankBoundaryResponseMessage) InvokeMessageHandler(agent IExtendedAgent) {
-	agent.Team1_BoundaryOpinionResponseHandler(msg)
+	agent.Team1_BoundaryProposalResponseHandler(msg)
 }
