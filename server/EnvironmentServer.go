@@ -1,9 +1,11 @@
 package environmentServer
 
 import (
+	"fmt"
 	"log"
 	"math/rand"
 	"sync"
+	"time"
 
 	gameRecorder "github.com/ADimoska/SOMASExtended/gameRecorder"
 	"github.com/google/uuid"
@@ -33,6 +35,10 @@ type EnvironmentServer struct {
 	thresholdTurns int
 }
 
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
 func (cs *EnvironmentServer) RunTurn(i, j int) {
 	log.Printf("\n\nIteration %v, Turn %v, current agent count: %v\n", i, j, len(cs.GetAgentMap()))
 
@@ -51,105 +57,109 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 	for _, team := range cs.Teams {
 		log.Println("\nRunning turn for team ", team.TeamID)
 		// Sum of contributions from all agents in the team for this turn
-		agentContributionsTotal := 0
-		for _, agentID := range team.Agents {
-			agent := cs.GetAgentMap()[agentID]
-			if agent.GetTeamID() == uuid.Nil || cs.IsAgentDead(agentID) {
-				continue
-			}
-			// Override agent rolls for testing purposes
-			// agentList := []uuid.UUID{agentID}
-			// cs.OverrideAgentRolls(agentID, agentList, 1)
-			agent.StartRollingDice(agent)
-			agentActualContribution := agent.GetActualContribution(agent)
-			agentContributionsTotal += agentActualContribution
-			agentStatedContribution := agent.GetStatedContribution(agent)
-
-			agent.StateContributionToTeam(agent)
-			agentScore := agent.GetTrueScore()
-			// Update audit result for this agent
-			team.TeamAoA.SetContributionAuditResult(agentID, agentScore, agentActualContribution, agentStatedContribution)
-			agent.SetTrueScore(agentScore - agentActualContribution)
-		}
-
-		// Update common pool with total contribution from this team
-		// 	Agents do not get to see the common pool before deciding their contribution
-		//  Different to the withdrawal phase!
-		team.SetCommonPool(team.GetCommonPool() + agentContributionsTotal)
-
-		// Initiate Contribution Audit vote
-		contributionAuditVotes := []common.Vote{}
-		for _, agentID := range team.Agents {
-			agent := cs.GetAgentMap()[agentID]
-			vote := agent.GetContributionAuditVote()
-			contributionAuditVotes = append(contributionAuditVotes, vote)
-		}
-
-		// Execute Contribution Audit if necessary
-		if agentToAudit := team.TeamAoA.GetVoteResult(contributionAuditVotes); agentToAudit != uuid.Nil {
-			auditResult := team.TeamAoA.GetContributionAuditResult(agentToAudit)
+		if team.TeamAoAID == 5 {
+			cs.Team5_RunTurn(team)
+		} else {
+			agentContributionsTotal := 0
 			for _, agentID := range team.Agents {
 				agent := cs.GetAgentMap()[agentID]
-				agent.SetAgentContributionAuditResult(agentToAudit, auditResult)
+				if agent.GetTeamID() == uuid.Nil || cs.IsAgentDead(agentID) {
+					continue
+				}
+				// Override agent rolls for testing purposes
+				// agentList := []uuid.UUID{agentID}
+				// cs.OverrideAgentRolls(agentID, agentList, 1)
+				agent.StartRollingDice(agent)
+				agentActualContribution := agent.GetActualContribution(agent)
+				agentContributionsTotal += agentActualContribution
+				agentStatedContribution := agent.GetStatedContribution(agent)
+
+				agent.StateContributionToTeam(agent)
+				agentScore := agent.GetTrueScore()
+				// Update audit result for this agent
+				team.TeamAoA.SetContributionAuditResult(agentID, agentScore, agentActualContribution, agentStatedContribution)
+				agent.SetTrueScore(agentScore - agentActualContribution)
 			}
-		}
 
-		orderedAgents := team.TeamAoA.GetWithdrawalOrder(team.Agents)
-		commonPoolBefore := team.GetCommonPool()
-		for _, agentID := range orderedAgents {
-			agent := cs.GetAgentMap()[agentID]
-			if agent.GetTeamID() == uuid.Nil || cs.IsAgentDead(agentID) {
-				continue
-			}
+			// Update common pool with total contribution from this team
+			// 	Agents do not get to see the common pool before deciding their contribution
+			//  Different to the withdrawal phase!
+			team.SetCommonPool(team.GetCommonPool() + agentContributionsTotal)
 
-			// Pass the current pool value to agent's methods
-			currentPool := team.GetCommonPool()
-			agentActualWithdrawal := agent.GetActualWithdrawal(agent)
-			if agentActualWithdrawal > currentPool {
-				agentActualWithdrawal = currentPool // Ensure withdrawal does not exceed available pool
-			}
-			agentStatedWithdrawal := agent.GetStatedWithdrawal(agent)
-
-			agentScore := agent.GetTrueScore()
-			// Update audit result for this agent
-			team.TeamAoA.SetWithdrawalAuditResult(agentID, agentScore, agentActualWithdrawal, agentStatedWithdrawal, commonPoolBefore)
-			agent.SetTrueScore(agentScore + agentActualWithdrawal)
-
-			// Update the common pool after each withdrawal so agents can see the updated pool before deciding their withdrawal.
-			//  Different to the contribution phase!
-			team.SetCommonPool(currentPool - agentActualWithdrawal)
-			log.Printf("[server] Agent %v withdrew %v. Remaining pool: %v\n", agentID, agentActualWithdrawal, team.GetCommonPool())
-		}
-
-		stateWithdrawOrder := make([]uuid.UUID, len(team.Agents))
-		copy(stateWithdrawOrder, team.Agents)
-		// Shuffle the order of agents to broadcast withdrawal amounts
-		rand.Shuffle(len(stateWithdrawOrder), func(i, j int) {
-			stateWithdrawOrder[i], stateWithdrawOrder[j] = stateWithdrawOrder[j], stateWithdrawOrder[i]
-		})
-
-		for _, agentId := range stateWithdrawOrder {
-			agent := cs.GetAgentMap()[agentId]
-			if agent.GetTeamID() == uuid.Nil || cs.IsAgentDead(agentId) {
-				continue
-			}
-			agent.StateWithdrawalToTeam(agent)
-		}
-
-		// Initiate Withdrawal Audit vote
-		withdrawalAuditVotes := []common.Vote{}
-		for _, agentID := range team.Agents {
-			agent := cs.GetAgentMap()[agentID]
-			vote := agent.GetWithdrawalAuditVote()
-			withdrawalAuditVotes = append(withdrawalAuditVotes, vote)
-		}
-
-		// Execute Withdrawal Audit if necessary
-		if agentToAudit := team.TeamAoA.GetVoteResult(withdrawalAuditVotes); agentToAudit != uuid.Nil {
-			auditResult := team.TeamAoA.GetWithdrawalAuditResult(agentToAudit)
+			// Initiate Contribution Audit vote
+			contributionAuditVotes := []common.Vote{}
 			for _, agentID := range team.Agents {
 				agent := cs.GetAgentMap()[agentID]
-				agent.SetAgentWithdrawalAuditResult(agentToAudit, auditResult)
+				vote := agent.GetContributionAuditVote()
+				contributionAuditVotes = append(contributionAuditVotes, vote)
+			}
+
+			// Execute Contribution Audit if necessary
+			if agentToAudit := team.TeamAoA.GetVoteResult(contributionAuditVotes); agentToAudit != uuid.Nil {
+				auditResult := team.TeamAoA.GetContributionAuditResult(agentToAudit)
+				for _, agentID := range team.Agents {
+					agent := cs.GetAgentMap()[agentID]
+					agent.SetAgentContributionAuditResult(agentToAudit, auditResult)
+				}
+			}
+
+			orderedAgents := team.TeamAoA.GetWithdrawalOrder(team.Agents)
+			commonPoolBefore := team.GetCommonPool()
+			for _, agentID := range orderedAgents {
+				agent := cs.GetAgentMap()[agentID]
+				if agent.GetTeamID() == uuid.Nil || cs.IsAgentDead(agentID) {
+					continue
+				}
+
+				// Pass the current pool value to agent's methods
+				currentPool := team.GetCommonPool()
+				agentActualWithdrawal := agent.GetActualWithdrawal(agent)
+				if agentActualWithdrawal > currentPool {
+					agentActualWithdrawal = currentPool // Ensure withdrawal does not exceed available pool
+				}
+				agentStatedWithdrawal := agent.GetStatedWithdrawal(agent)
+
+				agentScore := agent.GetTrueScore()
+				// Update audit result for this agent
+				team.TeamAoA.SetWithdrawalAuditResult(agentID, agentScore, agentActualWithdrawal, agentStatedWithdrawal, commonPoolBefore)
+				agent.SetTrueScore(agentScore + agentActualWithdrawal)
+
+				// Update the common pool after each withdrawal so agents can see the updated pool before deciding their withdrawal.
+				//  Different to the contribution phase!
+				team.SetCommonPool(currentPool - agentActualWithdrawal)
+				log.Printf("[server] Agent %v withdrew %v. Remaining pool: %v\n", agentID, agentActualWithdrawal, team.GetCommonPool())
+			}
+
+			stateWithdrawOrder := make([]uuid.UUID, len(team.Agents))
+			copy(stateWithdrawOrder, team.Agents)
+			// Shuffle the order of agents to broadcast withdrawal amounts
+			rand.Shuffle(len(stateWithdrawOrder), func(i, j int) {
+				stateWithdrawOrder[i], stateWithdrawOrder[j] = stateWithdrawOrder[j], stateWithdrawOrder[i]
+			})
+
+			for _, agentId := range stateWithdrawOrder {
+				agent := cs.GetAgentMap()[agentId]
+				if agent.GetTeamID() == uuid.Nil || cs.IsAgentDead(agentId) {
+					continue
+				}
+				agent.StateWithdrawalToTeam(agent)
+			}
+
+			// Initiate Withdrawal Audit vote
+			withdrawalAuditVotes := []common.Vote{}
+			for _, agentID := range team.Agents {
+				agent := cs.GetAgentMap()[agentID]
+				vote := agent.GetWithdrawalAuditVote()
+				withdrawalAuditVotes = append(withdrawalAuditVotes, vote)
+			}
+
+			// Execute Withdrawal Audit if necessary
+			if agentToAudit := team.TeamAoA.GetVoteResult(withdrawalAuditVotes); agentToAudit != uuid.Nil {
+				auditResult := team.TeamAoA.GetWithdrawalAuditResult(agentToAudit)
+				for _, agentID := range team.Agents {
+					agent := cs.GetAgentMap()[agentID]
+					agent.SetAgentWithdrawalAuditResult(agentToAudit, auditResult)
+				}
 			}
 		}
 	}
@@ -200,52 +210,185 @@ func (cs *EnvironmentServer) RunStartOfIteration(iteration int) {
 	}
 }
 
-// Allocate AoA based on team votes;
-// for each member in team, count vote for AoA and then take majority (?) vote
-// assign majority vote back to team struct (team.Strategy)
+func runCopelandVote(team *common.Team, cs *EnvironmentServer) []int {
+
+	pairwiseWins := make(map[string]int)
+	copelandScores := make(map[byte]float64)
+
+	fmt.Printf("Starting Copeland Vote for Team %s with %d members.\n", team.TeamID, len(team.Agents))
+	// Loop through each agent in the team
+
+	for _, agent := range team.Agents {
+
+		agentAoARanking := cs.GetAgentMap()[agent].GetAoARanking()
+
+		fmt.Printf("Agent %s has the following AoA rankings:\n", agent)
+		fmt.Println(agentAoARanking)
+
+		// Loop through each pair of ranked candidates and perform pairwise comparison
+		for i := 0; i < len(agentAoARanking); i++ {
+			for j := i + 1; j < len(agentAoARanking); j++ {
+				if agentAoARanking[i] < agentAoARanking[j] {
+
+					pair := []int{agentAoARanking[i], agentAoARanking[j]}
+
+					pairKey := fmt.Sprintf("%d%d", pair[0], pair[1])
+
+					fmt.Printf("Agent %s: Comparing candidates %d and %d. Winner: %d\n", agent, pair[0], pair[1], pair[0])
+
+					pairwiseWins[pairKey]++
+				} else {
+
+					pair := []int{agentAoARanking[j], agentAoARanking[i]}
+
+					pairKey := fmt.Sprintf("%d%d", pair[0], pair[1])
+
+					fmt.Printf("Agent %s: Comparing candidates %d and %d. Winner: %d\n", agent, pair[1], pair[0], pair[1])
+
+					pairwiseWins[pairKey] -= 1
+				}
+
+			}
+		}
+	}
+
+	fmt.Println(pairwiseWins)
+	for pair, score := range pairwiseWins {
+		// Subtract ASCII value of 0
+		candidate1 := pair[0] - 48
+		candidate2 := pair[1] - 48
+
+		fmt.Printf("Processing pair %s (candidate 1: %d, candidate 2: %d), score: %d\n", pair, candidate1, candidate2, score)
+
+		if score > 0 {
+			copelandScores[candidate1] += 1
+			fmt.Printf("Candidate %d wins, Copeland score updated: %v\n", candidate1, copelandScores[candidate1])
+
+		} else if score < 0 {
+			copelandScores[candidate2] += 1
+			fmt.Printf("Candidate %d wins, Copeland score updated: %v\n", candidate2, copelandScores[candidate2])
+		} else {
+			copelandScores[candidate1] += 0.5
+			copelandScores[candidate2] += 0.5
+			fmt.Printf("It's a tie! Copeland scores updated: %v, %v\n", copelandScores[candidate1], copelandScores[candidate2])
+
+		}
+	}
+	fmt.Println(copelandScores)
+
+	var maxScore float64
+	var maxCandidates []int
+	for key, score := range copelandScores {
+		candidate := int(key)
+		if score > maxScore {
+			maxScore = score
+			maxCandidates = []int{candidate}
+		} else if score == maxScore {
+			maxCandidates = append(maxCandidates, candidate)
+		}
+	}
+
+	fmt.Printf("\nWinning candidates for Team %s: %v\n", team.TeamID, maxCandidates)
+
+	return maxCandidates
+}
+
+// Aggregates scores for candidates returns all candidates who have the highest score
+func runBordaVote(team *common.Team, aoaCandidates []int, cs *EnvironmentServer) []int {
+
+	aoaCandidatesSet := make(map[int]struct{})
+	for _, candidate := range aoaCandidates {
+		aoaCandidatesSet[candidate] = struct{}{}
+	}
+
+	voteSum := make(map[int]int) // key = AoA candidate, value = total votes
+	n := len(aoaCandidates)
+	for _, agent := range team.Agents {
+
+		agentRanking := cs.GetAgentMap()[agent].GetAoARanking()
+		fmt.Printf("Agent %s has the following AoA rankings:\n", agent)
+		fmt.Println((agentRanking))
+
+		// Check if the current AoA is a candidate
+		for vote, aoa := range agentRanking {
+			if _, exists := aoaCandidatesSet[aoa]; exists {
+				points := n - vote - 1
+				voteSum[aoa] += points
+				fmt.Printf("Agent %s votes for AoA %d with %d point\n", agent, aoa, points)
+			}
+		}
+	}
+
+	fmt.Println("\nCandidates scores:")
+	fmt.Println(voteSum)
+	var filtered []int
+
+	if len(voteSum) == 1 {
+		return filtered
+	}
+
+	// Initialize maxVotes to the first candidate's score
+	maxVotes := voteSum[aoaCandidates[0]]
+
+	// Find the max score and filter candidates with the max score
+	for candidate, score := range voteSum {
+		if score > maxVotes {
+			maxVotes = score
+			// Reset filtered list with the new max score
+			filtered = []int{candidate}
+		} else if score == maxVotes {
+			filtered = append(filtered, candidate)
+		}
+
+		fmt.Printf("Processing candidate %d with score %d\n", candidate, score)
+	}
+
+	// Remove candidates below a threshold (check if there are ties)
+	fmt.Println("\nFiltered candidates after tie removal:")
+	fmt.Println(filtered)
+
+	return filtered
+}
+
 func (cs *EnvironmentServer) allocateAoAs() {
-	// Iterate over each team
 	for _, team := range cs.Teams {
-		// ranking cache for each team.
-		var voteSum = []int{0, 0, 0, 0}
-		for _, agent := range team.Agents {
-			if cs.IsAgentDead(agent) {
-				continue
-			}
-			for aoa, vote := range cs.GetAgentMap()[agent].GetAoARanking() {
-				voteSum[aoa] += vote
-			}
+		winners := runCopelandVote(team, cs)
+		if len(winners) > 1 {
+			fmt.Println("Multiple winners detected. Running Borda Vote.")
+			winners = runBordaVote(team, winners, cs)
 		}
+		// Select random AoA if still tied, else select 'winner'
+		if len(winners) > 0 {
 
-		// Determine the preferred AoA based on the majority vote
-		currentMax := 0
-		preference := 0
-		for aoa, voteCount := range voteSum {
-			if voteCount > currentMax {
-				currentMax = voteCount
-				preference = aoa
+			// Create a random number generator with a seed based on current time
+			r := rand.New(rand.NewSource(time.Now().UnixNano()))
+			// Generate random index
+			randomI := r.Intn(len(winners))
+			preference := winners[randomI]
+
+			// Update the team's strategy
+			switch preference {
+			case 1:
+				team.TeamAoA = common.CreateTeam1AoA(team)
+			case 2:
+				team.TeamAoA = common.CreateTeam2AoA(5)
+			case 3:
+				team.TeamAoA = common.CreateFixedAoA(1)
+			case 4:
+				team.TeamAoA = common.CreateFixedAoA(1)
+			case 5:
+				team.TeamAoA = common.CreateTeam5AoA()
+				team.TeamAoAID = 5
+			case 6:
+				team.TeamAoA = common.CreateFixedAoA(1)
+			default:
+				team.TeamAoA = common.CreateFixedAoA(1)
 			}
-		}
 
-		// Update the team's strategy
-		switch preference {
-		case 1:
-			team.TeamAoA = common.CreateTeam1AoA(team)
-		case 2:
-			team.TeamAoA = common.CreateTeam2AoA(5)
-		case 3:
-			team.TeamAoA = common.CreateFixedAoA(1)
-		case 4:
-			team.TeamAoA = common.CreateFixedAoA(1)
-		case 5:
-			team.TeamAoA = common.CreateFixedAoA(1)
-		case 6:
-			team.TeamAoA = common.CreateFixedAoA(1)
-		default:
-			team.TeamAoA = common.CreateFixedAoA(1)
-		}
+			cs.Teams[team.TeamID] = team
+			fmt.Printf("Team %v has AoA: %v\n", team.TeamID, winners[randomI])
 
-		cs.Teams[team.TeamID] = team
+		}
 	}
 }
 
@@ -508,6 +651,23 @@ func (cs *EnvironmentServer) GetTeamFromTeamID(teamID uuid.UUID) *common.Team {
 	return cs.Teams[teamID]
 }
 
+// To be used by agents to find out what teams they want to join in the next round (if they are orphaned).
+func (cs *EnvironmentServer) GetTeamIDs() []uuid.UUID {
+	teamIDs := make([]uuid.UUID, 0, len(cs.Teams))
+	for teamID := range cs.Teams {
+		teamIDs = append(teamIDs, teamID)
+	}
+	return teamIDs
+}
+
+// Can be used to find the amount in the common pool for a team. If this is used,
+// it should be logged on the server (to prevent cheating)
+func (cs *EnvironmentServer) GetTeamCommonPool(teamID uuid.UUID) int {
+	log.Printf("Get Team Common Pool called! Team ID: %v\n", teamID)
+	team := cs.Teams[teamID]
+	return team.GetCommonPool()
+}
+
 // reset all agents (preserve memory but clears scores)
 func (cs *EnvironmentServer) ResetAgents() {
 	for _, agent := range cs.GetAgentMap() {
@@ -553,4 +713,122 @@ func (cs *EnvironmentServer) RecordTurnInfo() {
 	}
 
 	cs.DataRecorder.RecordNewTurn(agentRecords, teamRecords)
+}
+
+func (cs *EnvironmentServer) Team5_RunTurn(team *common.Team) {
+	fmt.Println("\nRunning turn for team ", team.TeamID)
+
+	// Sum of contributions from all agents in the team for this turn
+	agentContributionsTotal := 0
+	for _, agentID := range team.Agents {
+		agent := cs.GetAgentMap()[agentID]
+		if agent.GetTeamID() == uuid.Nil || cs.IsAgentDead(agentID) {
+			continue
+		}
+		agentScore := agent.GetTrueScore()
+		expectedContribution := team.TeamAoA.GetExpectedContribution(agentID, agentScore)
+
+		// Agents make actual contribution
+		agentActualContribution := agent.GetActualContribution(agent)
+
+		// Update audit result
+		team.TeamAoA.SetContributionAuditResult(agentID, agentScore, agentActualContribution, expectedContribution)
+		agent.SetTrueScore(agentScore - agentActualContribution)
+		agentContributionsTotal += agentActualContribution
+	}
+
+	// Update common pool with total contribution from this team
+	team.SetCommonPool(team.GetCommonPool() + agentContributionsTotal)
+
+	// Initiate Contribution Audit vote
+	contributionAuditVotes := []common.Vote{}
+	for _, agentID := range team.Agents {
+		agent := cs.GetAgentMap()[agentID]
+		vote := agent.GetContributionAuditVote()
+		contributionAuditVotes = append(contributionAuditVotes, vote)
+	}
+
+	// Execute Contribution Audit if necessary
+	if agentToAudit := team.TeamAoA.GetVoteResult(contributionAuditVotes); agentToAudit != uuid.Nil {
+		auditCost := team.TeamAoA.GetAuditCost(team.GetCommonPool())
+		if auditCost <= team.GetCommonPool() {
+			// Deduct the audit cost from the common pool
+			team.SetCommonPool(team.GetCommonPool() - auditCost)
+			fmt.Printf("[server] Audit cost of %v deducted from the common pool. Remaining pool: %v\n", auditCost, team.GetCommonPool())
+
+			// Proceed with the audit
+			auditResult := team.TeamAoA.GetContributionAuditResult(agentToAudit)
+			for _, agentID := range team.Agents {
+				agent := cs.GetAgentMap()[agentID]
+				agent.SetAgentContributionAuditResult(agentToAudit, auditResult)
+			}
+		} else {
+			fmt.Printf("[server] Not enough resources in the common pool to cover the audit cost. Skipping audit.\n")
+		}
+	}
+
+	// Calculate withdrawal order and allow agents to withdraw
+	remainingResources := team.GetCommonPool()
+	orderedAgents := team.TeamAoA.GetWithdrawalOrder(team.Agents)
+	team.TeamAoA.ResourceAllocation(cs.GetAgentScores(), remainingResources)
+	for _, agentID := range orderedAgents {
+		agent := cs.GetAgentMap()[agentID]
+		if agent.GetTeamID() == uuid.Nil || cs.IsAgentDead(agentID) {
+			continue
+		}
+
+		// Agents make actual withdrawal
+		agentActualWithdrawal := agent.GetActualWithdrawal(agent)
+		currentPool := team.GetCommonPool()
+		if agentActualWithdrawal > currentPool {
+			agentActualWithdrawal = currentPool // Ensure withdrawal does not exceed available pool
+		}
+
+		agentStatedWithdrawal := agent.GetStatedWithdrawal(agent)
+		agentScore := agent.GetTrueScore()
+
+		// Update audit result for this agent
+		team.TeamAoA.SetWithdrawalAuditResult(agentID, agentScore, agentActualWithdrawal, agentStatedWithdrawal, currentPool)
+
+		// Update agent score and common pool
+		agent.SetTrueScore(agentScore + agentActualWithdrawal)
+		team.SetCommonPool(currentPool - agentActualWithdrawal)
+		fmt.Printf("[server] Agent %v withdrew %v. Remaining pool: %v\n", agentID, agentActualWithdrawal, team.GetCommonPool())
+	}
+
+	// Initiate Withdrawal Audit vote
+	withdrawalAuditVotes := []common.Vote{}
+	for _, agentID := range team.Agents {
+		agent := cs.GetAgentMap()[agentID]
+		vote := agent.GetWithdrawalAuditVote()
+		withdrawalAuditVotes = append(withdrawalAuditVotes, vote)
+	}
+
+	// Execute Withdrawal Audit if necessary
+	if agentToAudit := team.TeamAoA.GetVoteResult(withdrawalAuditVotes); agentToAudit != uuid.Nil {
+		auditCost := team.TeamAoA.GetAuditCost(team.GetCommonPool())
+		if auditCost <= team.GetCommonPool() {
+			// Deduct the audit cost from the common pool
+			team.SetCommonPool(team.GetCommonPool() - auditCost)
+			fmt.Printf("[server] Withdrawal audit cost of %v deducted from the common pool. Remaining pool: %v\n", auditCost, team.GetCommonPool())
+
+			// Proceed with the audit
+			auditResult := team.TeamAoA.GetWithdrawalAuditResult(agentToAudit)
+			for _, agentID := range team.Agents {
+				agent := cs.GetAgentMap()[agentID]
+				agent.SetAgentWithdrawalAuditResult(agentToAudit, auditResult)
+			}
+		} else {
+			fmt.Printf("[server] Not enough resources in the common pool to cover the audit cost. Skipping withdrawal audit.\n")
+		}
+	}
+}
+
+// GetAgentScores returns the current scores of all agents in the server
+func (cs *EnvironmentServer) GetAgentScores() map[uuid.UUID]int {
+	agentScores := make(map[uuid.UUID]int)
+	for _, agent := range cs.GetAgentMap() {
+		agentScores[agent.GetID()] = agent.GetTrueScore()
+	}
+	return agentScores
 }

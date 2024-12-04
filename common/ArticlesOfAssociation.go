@@ -21,6 +21,7 @@ type IArticlesOfAssociation interface {
 	GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID
 	RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent)
 	RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent)
+	ResourceAllocation(agentScores map[uuid.UUID]int, remainingResources int) map[uuid.UUID]int
 }
 
 func CreateVote(isVote int, voterId uuid.UUID, votedForId uuid.UUID) Vote {
