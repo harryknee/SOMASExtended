@@ -203,6 +203,7 @@ func (mi *ExtendedAgent) DecideContribution() int {
 // TODO: the value returned by this should be broadcasted to the team via a message
 // This function MUST return the same value when called multiple times in the same turn
 func (mi *ExtendedAgent) GetStatedContribution(instance common.IExtendedAgent) int {
+	fmt.Println("base called")
 	// first check if the agent has a team
 	if !mi.HasTeam() {
 		return 0
@@ -353,9 +354,9 @@ func (mi *ExtendedAgent) BroadcastSyncMessageToTeam(msg message.IMessage[common.
 	}
 }
 
-func (mi *ExtendedAgent) StateContributionToTeam() {
+func (mi *ExtendedAgent) StateContributionToTeam(instance common.IExtendedAgent) {
 	// Broadcast contribution to team
-	statedContribution := mi.GetStatedContribution(mi)
+	statedContribution := instance.GetStatedContribution(instance)
 	contributionMsg := mi.CreateContributionMessage(statedContribution)
 	mi.BroadcastSyncMessageToTeam(contributionMsg)
 }
@@ -558,5 +559,8 @@ func (mi *ExtendedAgent) UpdateStateAfterContributionAudit() {
 	// overwrite if your agent need to update internal state at this stage.
 }
 func (mi *ExtendedAgent) UpdateStateAfterWithdrawalAudit() {
+	// overwrite if your agent need to update internal state at this stage.
+}
+func (mi *ExtendedAgent) UpdateStateAfterRoll() {
 	// overwrite if your agent need to update internal state at this stage.
 }

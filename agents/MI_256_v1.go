@@ -132,6 +132,10 @@ func (mi *MI_256_v1) UpdateStateAfterWithdrawalAudit() {
 	mi.UpdateMoodAfterAuditionEnd()
 
 }
+func (mi *MI_256_v1) UpdateStateAfterRoll() {
+	mi.UpdateMoodAfterRoll()
+
+}
 
 //------functions to calculated the expected AOA contributions and stuff for all agents -------------------------------
 
@@ -229,20 +233,21 @@ func (mi *MI_256_v1) StickOrAgain(accumulatedScore int, prevRoll int) bool {
 	threshLow := 8
 	threshMid := 11
 	threshHigh := 14
-	if mi.mood > 5 { // be greedy
-		if prevRoll < threshHigh {
+	moodthresh := 20
+	if mi.mood > moodthresh { // be greedy
+		if mi.LastScore < threshHigh {
 			return true
 		} else {
 			return false
 		}
-	} else if (-5 < mi.mood) && (mi.mood < 5) {
-		if prevRoll < threshMid {
+	} else if (-moodthresh < mi.mood) && (mi.mood < moodthresh) {
+		if mi.LastScore < threshMid {
 			return true
 		} else {
 			return false
 		}
 	} else {
-		if prevRoll < threshLow {
+		if mi.LastScore < threshLow {
 			return true
 		} else {
 			return false
@@ -662,7 +667,8 @@ func (mi *MI_256_v1) UpdateMoodAfterRoll() {
 	bustMoodModifier := 1
 	// if the roll has gone bust
 	if mi.LastScore == 0 {
-		mi.mood += bustMoodModifier * mi.chaoticness
+		mi.mood += bustMoodModifier * (mi.chaoticness - 2)
+
 	}
 }
 

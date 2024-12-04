@@ -63,11 +63,12 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 			// agentList := []uuid.UUID{agentID}
 			// cs.OverrideAgentRolls(agentID, agentList, 1)
 			agent.StartRollingDice(agent)
+			agent.UpdateStateAfterRoll()
 			agentActualContribution := agent.GetActualContribution(agent)
 			agentContributionsTotal += agentActualContribution
 			agentStatedContribution := agent.GetStatedContribution(agent)
 
-			agent.StateContributionToTeam()
+			agent.StateContributionToTeam(agent)
 			agent.UpdateStateAfterContribution()
 			agentScore := agent.GetTrueScore()
 			// Update audit result for this agent
@@ -176,7 +177,7 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 	}
 
 	// record data
-	cs.RecordTurnInfo()
+	// cs.RecordTurnInfo()
 	cs.teamsMutex.Unlock()
 }
 
@@ -186,7 +187,7 @@ func (cs *EnvironmentServer) RunStartOfIteration(iteration int) {
 	cs.iteration = iteration
 
 	// record data
-	cs.DataRecorder.RecordNewIteration()
+	// cs.DataRecorder.RecordNewIteration()
 
 	// Initialise random threshold
 	cs.createNewRoundScoreThreshold()

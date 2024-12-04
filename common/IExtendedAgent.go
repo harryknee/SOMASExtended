@@ -50,7 +50,7 @@ type IExtendedAgent interface {
 	HandleWithdrawalMessage(msg *WithdrawalMessage)
 	BroadcastSyncMessageToTeam(msg message.IMessage[IExtendedAgent])
 	HandleContributionMessage(msg *ContributionMessage)
-	StateContributionToTeam()
+	StateContributionToTeam(instance IExtendedAgent)
 	StateWithdrawalToTeam()
 
 	// Info
@@ -72,4 +72,5 @@ type IExtendedAgent interface {
 	UpdateStateAfterWithdrawal()
 	UpdateStateAfterContributionAudit()
 	UpdateStateAfterWithdrawalAudit()
+	UpdateStateAfterRoll()
 }
