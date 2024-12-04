@@ -329,7 +329,7 @@ func (mi *MI_256_v1) DecideContribution() int {
 	}
 	contribute_percentage = Apply_mood(contribute_percentage)
 
-	mi.intendedContribution = max(int(math.Round(float64(contribute_percentage)*float64(mi.Score))), mi.Score)
+	mi.intendedContribution = min(int(math.Round(float64(contribute_percentage)*float64(mi.Score))), mi.Score)
 
 	// how much to declare:
 	// if you contributed less, there is no point to lie ( if audition checks against the expected contribution)
