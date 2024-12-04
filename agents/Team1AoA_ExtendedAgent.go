@@ -274,6 +274,7 @@ func (mi *ExtendedAgent) Team1_BoundaryProposalResponseHandler(msg *common.Team1
 }
 
 func (mi *ExtendedAgent) Team1_BoundaryBallotResponseHandler(msg *common.Team1BoundaryBallotResponseMessage) {
+	log.Printf("Chair %v received ballot %v from %v", mi.GetID(), msg.RankedCandidates, msg.GetSender())
 	mi.team1Ballots = append(mi.team1Ballots, msg.RankedCandidates)
 	mi.SignalMessagingComplete()
 }
