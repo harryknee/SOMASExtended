@@ -50,17 +50,23 @@ func (mi *ExtendedAgent) Team1_AgreeRankBoundaries() [5]int {
 * strategy.
 */
 func (mi *ExtendedAgent) team1_GatherRankBoundaryPreferences() [][5]int {
+
     opinions := make([][5]int, 0)
-    // for all agents in team
-    for _, agentID := range mi.Server.GetAgentsInTeam(mi.TeamID) {
-        // Ask them what they think the rank boundaries should be
-        req := &common.Team1RankBoundaryRequestMessage{
-            BaseMessage:  mi.CreateBaseMessage(),
-        }
-        mi.SendSynchronousMessage(req, agentID)
+
+    // Same request for all agents
+    req := &common.Team1RankBoundaryRequestMessage{
+        BaseMessage:  mi.CreateBaseMessage(),
     }
+
+    // Clear existing memory
+    mi.team1RankBoundaryOpinions = mi.team1RankBoundaryOpinions[0:]
+
     // Iterate over all agents and ask them for their opinions. We do not
     // store who each vote came from to enforce anonymity
+    for _, agentID := range mi.Server.GetAgentsInTeam(mi.TeamID) {
+        mi.SendSynchronousMessage(req, agentID)
+    }
+
     return opinions
 }
 
@@ -95,4 +101,6 @@ func (mi *ExtendedAgent) Team1_BoundaryOpinionRequestHandler(msg *common.Team1Ra
 
 func (mi *ExtendedAgent) Team1_BoundaryOpinionResponseHandler(msg *common.Team1RankBoundaryResponseMessage) {
     log.Printf("Chair %v received rank boundary opinion from %v", mi.GetID(), msg.GetSender())
+    mi.team1RankBoundaryOpinions = append(mi.team1RankBoundaryOpinions, msg.Bounds)
+    mi.SignalMessagingComplete()
 }
