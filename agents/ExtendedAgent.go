@@ -46,6 +46,7 @@ type ExtendedAgent struct {
 	ProposedWithdrawalVote map[uuid.UUID]int
 	RankUpVote             map[uuid.UUID]int
 	Confession             bool
+	PunishmentVoteMap      map[int]int
 }
 
 type AgentConfig struct {
@@ -64,6 +65,7 @@ func GetBaseAgents(funcs agent.IExposedServerFunctions[common.IExtendedAgent], c
 		ProposedWithdrawalVote: make(map[uuid.UUID]int),
 		RankUpVote:             make(map[uuid.UUID]int),
 		Confession:             false,
+		PunishmentVoteMap:      make(map[int]int),
 	}
 }
 
@@ -655,4 +657,9 @@ func (mi *ExtendedAgent) HandleProposedWithdrawalMessage(msg *common.ProposedWit
 			mi.GetID(), msg.GetSender(), msg.StatedAmount)
 	}
 	// Team's agent should implement logic to store or process the reported proposed withdrawal amount as desired
+}
+
+func (mi *ExtendedAgent) GetPunishmentVoteMap() map[int]int {
+	return mi.PunishmentVoteMap
+
 }

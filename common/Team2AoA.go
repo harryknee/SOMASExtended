@@ -134,6 +134,11 @@ func (t *Team2AoA) RunProposedWithdrawalVote(map[uuid.UUID]int, map[uuid.UUID]ma
 func (t *Team2AoA) HandleConfessionAuditResult(confession bool, agentId uuid.UUID, agentScore int) int {
 	return 0
 }
+
+func (t *Team2AoA) HandlePunishmentVote(map[uuid.UUID]map[int]int) int {
+	return 0
+}
+
 func (t *Team2AoA) RunAoAStuff() {}
 
 func CreateTeam2AoA(auditDuration int) IArticlesOfAssociation {

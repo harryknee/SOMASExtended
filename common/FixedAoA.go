@@ -84,7 +84,9 @@ func (t *FixedAoA) RunProposedWithdrawalVote(map[uuid.UUID]int, map[uuid.UUID]ma
 func (t *FixedAoA) HandleConfessionAuditResult(confession bool, agentId uuid.UUID, agentScore int) int {
 	return 0
 }
-
+func (t *FixedAoA) HandlePunishmentVote(map[uuid.UUID]map[int]int) int {
+	return 0
+}
 func CreateFixedAoA(duration int) IArticlesOfAssociation {
 	auditRecord := NewAuditRecord(duration)
 	return &FixedAoA{

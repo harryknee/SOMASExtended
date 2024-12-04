@@ -109,5 +109,31 @@ func (mi *MI_256_v1) GetProposedWithdrawalVote() map[uuid.UUID]int {
 	return proposedWithdrawals
 }
 
+func (mi *MI_256_v1) GetWithdrawalAuditVote() common.Vote {
+	log.Printf("Called overriden GetWithdrawalAuditVote()")
+
+	// Get the agents in the team
+	agentsInTeam := mi.Server.GetAgentsInTeam(mi.TeamID)
+
+	// Check if the team has any agents
+	if len(agentsInTeam) == 0 {
+		return common.CreateVote(0, mi.GetID(), uuid.Nil)
+	}
+
+	firstAgentID := agentsInTeam[0]
+
+	return common.CreateVote(1, mi.GetID(), firstAgentID)
+}
+
+func (mi *MI_256_v1) GetPunishmentVoteMap() map[int]int {
+	punishmentVoteMap := make(map[int]int)
+
+	for punishment := 0; punishment <= 4; punishment++ {
+		punishmentVoteMap[punishment] = rand.Intn(5)
+	}
+
+	return punishmentVoteMap
+}
+
 // ----------------------- State Helpers -----------------------
 // TODO: add helper functions for managing / using internal states

@@ -21,6 +21,7 @@ type IArticlesOfAssociation interface {
 	SetRankUp(map[uuid.UUID]map[uuid.UUID]int)
 	RunProposedWithdrawalVote(map[uuid.UUID]int, map[uuid.UUID]map[uuid.UUID]int)
 	HandleConfessionAuditResult(confession bool, agentId uuid.UUID, agentScore int) int
+	HandlePunishmentVote(map[uuid.UUID]map[int]int) int
 }
 
 func CreateVote(isVote int, voterId uuid.UUID, votedForId uuid.UUID) Vote {

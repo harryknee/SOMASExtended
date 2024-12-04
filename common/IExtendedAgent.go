@@ -79,6 +79,7 @@ type IExtendedAgent interface {
 	StateConfessionToTeam()
 	CreateConfessionMessage(confession bool) *ConfessionMessage
 	HandleConfessionMessage(msg *ConfessionMessage)
+	GetPunishmentVoteMap() map[int]int
 	// Data Recording
 	RecordAgentStatus() gameRecorder.AgentRecord
 }

@@ -178,24 +178,49 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 		// ***************
 		if agentToAudit := team.TeamAoA.GetVoteResult(withdrawalAuditVotes); agentToAudit != uuid.Nil {
 			agent := cs.GetAgentMap()[agentToAudit]
-			agentConfession := agent.GetConfession()
+			// agentConfession := agent.GetConfession()
 			agent.StateConfessionToTeam()
 			agentScore := agent.GetTrueScore()
-			auditResult := team.TeamAoA.HandleConfessionAuditResult(agentConfession, agentToAudit, agentScore)
-			agent.SetTrueScore(agentScore - auditResult)
+			// auditResult := team.TeamAoA.HandleConfessionAuditResult(agentConfession, agentToAudit, agentScore)
+			punishmentVoteMap := make(map[uuid.UUID]map[int]int)
+			for _, agentID := range team.Agents {
+				agent := cs.GetAgentMap()[agentID]
+				punishmentVote := agent.GetPunishmentVoteMap()
+				punishmentVoteMap[agentID] = punishmentVote
+			}
+
+			punishmentResult := team.TeamAoA.HandlePunishmentVote(punishmentVoteMap) * agentScore / 100
+
+			log.Printf("Punishment Result for Agent %v: %d (Agent Score: %d)\n", agent.GetID(), punishmentResult, agentScore)
+
+			newScore := agentScore - punishmentResult
+			agent.SetTrueScore(newScore)
+
+			log.Printf("Updated Score for Agent %v: %d\n", agent.GetID(), newScore)
+
 			currentPool := team.GetCommonPool()
-			team.SetCommonPool(currentPool + auditResult)
+			log.Printf("Current Common Pool: %d\n", currentPool)
+
+			team.SetCommonPool(currentPool + punishmentResult)
+			updatedPool := team.GetCommonPool()
+			log.Printf("Updated Common Pool: %d\n", updatedPool)
+			// punishmentResult := team.TeamAoA.HandlePunishmentVote(punishmentVoteMap) * agentScore
+
+			// agent.SetTrueScore(agentScore - punishmentResult)
+			// currentPool := team.GetCommonPool()
+			// team.SetCommonPool(currentPool + punishmentResult)
+
 		}
 		// ***************
 
 		// Execute Withdrawal Audit if necessary
-		if agentToAudit := team.TeamAoA.GetVoteResult(withdrawalAuditVotes); agentToAudit != uuid.Nil {
-			auditResult := team.TeamAoA.GetWithdrawalAuditResult(agentToAudit)
-			for _, agentID := range team.Agents {
-				agent := cs.GetAgentMap()[agentID]
-				agent.SetAgentWithdrawalAuditResult(agentToAudit, auditResult)
-			}
-		}
+		// if agentToAudit := team.TeamAoA.GetVoteResult(withdrawalAuditVotes); agentToAudit != uuid.Nil {
+		// 	auditResult := team.TeamAoA.GetWithdrawalAuditResult(agentToAudit)
+		// 	for _, agentID := range team.Agents {
+		// 		agent := cs.GetAgentMap()[agentID]
+		// 		agent.SetAgentWithdrawalAuditResult(agentToAudit, auditResult)
+		// 	}
+		// }
 	}
 
 	// TODO: Reallocate agents who left their teams during the turn

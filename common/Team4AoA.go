@@ -46,6 +46,69 @@ type Team4 struct {
 	AuditMap map[uuid.UUID][]int
 }
 
+// Punishment Voting System
+func (t *Team4) HandlePunishmentVote(punishmentVoteMap map[uuid.UUID]map[int]int) int {
+	punishmentGrades := make(map[int][]int)
+
+	for _, votes := range punishmentVoteMap {
+		for punishment, grade := range votes {
+			punishmentGrades[punishment] = append(punishmentGrades[punishment], grade)
+		}
+	}
+
+	// Calculate median for each punishment
+	medianGrades := make(map[int]int)
+	for punishment, grades := range punishmentGrades {
+		medianGrades[punishment] = calculateMedian(grades)
+	}
+
+	// Determine punishment with the highest median grade
+	var selectedPunishment int
+	highestMedian := -1
+	for punishment, median := range medianGrades {
+		if median > highestMedian {
+			highestMedian = median
+			selectedPunishment = punishment
+		}
+	}
+
+	// Return punishment score (you can define values for each punishment)
+	return getPunishmentScore(selectedPunishment)
+}
+
+func getPunishmentScore(punishment int) int {
+	switch punishment {
+	case 0:
+		return 0 // No punishment
+	case 1:
+		return 10 // Small fine
+	case 2:
+		return 25 // Moderate fine
+	case 3:
+		return 50 // Large fine
+	case 4:
+		return 100 // Severe punishment
+	default:
+		return 0
+	}
+}
+
+func calculateMedian(grades []int) int {
+	if len(grades) == 0 {
+		return 0
+	}
+
+	sort.Ints(grades)
+
+	mid := len(grades) / 2
+	if len(grades)%2 == 0 {
+		// Average of middle grades if even
+		return (grades[mid-1] + grades[mid]) / 2
+	}
+	// Middle grade if odd
+	return grades[mid]
+}
+
 func (t *Team4) SetRankUp(rankUpVoteMap map[uuid.UUID]map[uuid.UUID]int) {
 	approvalCounts := make(map[uuid.UUID]int)
 
@@ -282,10 +345,8 @@ func (t *Team4) HandleConfessionAuditResult(confession bool, agentId uuid.UUID, 
 		return agentScore * 25 / 100
 	}
 
-	// Access the agent's audit history
 	auditHistory, exists := t.AuditMap[agentId]
 	if !exists || len(auditHistory) < 2 {
-		// If no sufficient audit history, return the original score
 		return agentScore
 	}
 
@@ -347,124 +408,3 @@ func (t *Team4) GetVoteWeight(rank string) int {
 		return 0
 	}
 }
-
-// Need to handle AUDIT truth value and storing + how it succeeds
-/*Extra Functions to implement:
-team.TeamAoA.SetRankUp(rankUpVoteMap) Done
-team.TeamAoA.RunWithdrawalVote(proposedWithdrawalMap) Done
-
-agent.GetStatedWithdrawal(agent) if this needs to be different for ProposedWithdrawal
-
-agent.GetRankUpVote()
-agent.GetConfession(agent)
-agent.SetAgentAuditResult(agent, agentConfession)
-agent.GetWithdrawalVote(agent)
-*/
-
-/* Our Turn Flow - Additional Flow marked with ***************
-func (cs *EnvironmentServer) RunTurn(i, j int) {
-	fmt.Printf("\n\nIteration %v, Turn %v, current agent count: %v\n", i, j, len(cs.GetAgentMap()))
-
-	cs.teamsMutex.Lock()
-	defer cs.teamsMutex.Unlock()
-
-	for _, team := range cs.teams {
-		fmt.Println("\nRunning turn for team ", team.TeamID)
-		// Sum of contributions from all agents in the team for this turn
-		agentContributionsTotal := 0
-		for _, agentID := range team.Agents {
-			agent := cs.GetAgentMap()[agentID]
-			if agent.GetTeamID() == uuid.Nil || cs.IsAgentDead(agentID) {
-				continue
-			}
-			agent.StartRollingDice(agent)
-			agentActualContribution := agent.GetActualContribution(agent)
-			agentContributionsTotal += agentActualContribution
-			// Assume this will be broadcasted to each agent in a team via message in sync / update a map in Agent's struct
-			agentStatedContribution := agent.GetStatedContribution(agent)
-			agentScore := agent.GetTrueScore()
-			// Update audit result for this agent
-			team.TeamAoA.SetContributionAuditResult(agentID, agentScore, agentActualContribution, agentStatedContribution)
-			agent.SetTrueScore(agentScore - agentActualContribution)
-		}
-
-
-
-		// Update common pool with total contribution from this team
-		// 	Agents do not get to see the common pool before deciding their contribution
-		//  Different to the withdrawal phase!
-		team.SetCommonPool(team.GetCommonPool() + agentContributionsTotal)
-
-
-
-
-		// Do AoA processing
-		team.TeamAoA.RunAoAStuff()
-
-		// Initiate Contribution Audit vote
-		contributionAuditVotes := []common.Vote{}
-		for _, agentID := range team.Agents {
-			agent := cs.GetAgentMap()[agentID]
-			vote := agent.GetContributionAuditVote()
-			contributionAuditVotes = append(contributionAuditVotes, vote)
-		}
-
-		// Execute Contribution Audit if necessary
-		if agentToAudit := team.TeamAoA.GetVoteResult(contributionAuditVotes); agentToAudit != uuid.Nil {
-			auditResult := team.TeamAoA.GetContributionAuditResult(agentToAudit)
-			for _, agentID := range team.Agents {
-				agent := cs.GetAgentMap()[agentID]
-				agent.SetAgentContributionAuditResult(agentToAudit, auditResult)
-			}
-		}
-
-		orderedAgents := team.TeamAoA.GetWithdrawalOrder(team.Agents)
-		for _, agentID := range orderedAgents {
-			agent := cs.GetAgentMap()[agentID]
-			if agent.GetTeamID() == uuid.Nil || cs.IsAgentDead(agentID) {
-				continue
-			}
-
-			// Pass the current pool value to agent's methods
-			currentPool := team.GetCommonPool()
-			agentActualWithdrawal := agent.GetActualWithdrawal(agent)
-			if agentActualWithdrawal > currentPool {
-				agentActualWithdrawal = currentPool // Ensure withdrawal does not exceed available pool
-			}
-			agentStatedWithdrawal := agent.GetStatedWithdrawal(agent)
-			agentScore := agent.GetTrueScore()
-			// Update audit result for this agent
-			team.TeamAoA.SetWithdrawalAuditResult(agentID, agentScore, agentActualWithdrawal, agentStatedWithdrawal, team.GetCommonPool())
-			agent.SetTrueScore(agentScore + agentActualWithdrawal)
-
-			// Update the common pool after each withdrawal so agents can see the updated pool before deciding their withdrawal.
-			//  Different to the contribution phase!
-			team.SetCommonPool(currentPool - agentActualWithdrawal)
-			fmt.Printf("[server] Agent %v withdrew %v. Remaining pool: %v\n", agentID, agentActualWithdrawal, team.GetCommonPool())
-		}
-
-
-
-		// Initiate Withdrawal Audit vote
-		withdrawalAuditVotes := []common.Vote{}
-		for _, agentID := range team.Agents {
-			agent := cs.GetAgentMap()[agentID]
-			vote := agent.GetWithdrawalAuditVote()
-			withdrawalAuditVotes = append(withdrawalAuditVotes, vote)
-		}
-
-
-		// Execute Withdrawal Audit if necessary
-		if agentToAudit := team.TeamAoA.GetVoteResult(withdrawalAuditVotes); agentToAudit != uuid.Nil {
-			auditResult := team.TeamAoA.GetWithdrawalAuditResult(agentToAudit)
-			for _, agentID := range team.Agents {
-				agent := cs.GetAgentMap()[agentID]
-				agent.SetAgentWithdrawalAuditResult(agentToAudit, auditResult)
-			}
-		}
-	}
-
-	// TODO: Reallocate agents who left their teams during the turn
-}
-
-*/
