@@ -72,16 +72,16 @@ func (mi *ExtendedAgent) team1_GatherRankBoundaryProposals() {
 * Generate the candidates based off the proposals expressed by the agents
  */
 func (mi *ExtendedAgent) team1_GenerateRankBoundaryCandidates() [3][5]int {
-	// This function will take the values stored in team1RankBoundaryOpinions
+	// This function will take the values stored in team1RankBoundaryProposals
 	// (which should have been collected just before this).
-	if mi.team1RankBoundaryOpinions == nil {
+	if mi.team1RankBoundaryProposals == nil {
 		log.Fatal("Tried generating candidates without asking for agent proposals! (nil pointer)")
 		return [3][5]int{}
 	}
 
 	// Transpose the proposals matrix - This converts arrays of proposals of
 	// each agent to arrays of proposals for each rank
-	rows := len(mi.team1RankBoundaryOpinions)
+	rows := len(mi.team1RankBoundaryProposals)
 	cols := 5 // for 5 ranks
 
 	// pre-allocate
@@ -93,7 +93,7 @@ func (mi *ExtendedAgent) team1_GenerateRankBoundaryCandidates() [3][5]int {
 	// fill
 	for i := 0; i < rows; i++ {
 		for j := 0; j < cols; j++ {
-			boundaries[j][i] = mi.team1RankBoundaryOpinions[i][j]
+			boundaries[j][i] = mi.team1RankBoundaryProposals[i][j]
 		}
 	}
 
@@ -207,6 +207,6 @@ func (mi *ExtendedAgent) TestableGatherFunc() func() {
 }
 
 func (mi *ExtendedAgent) TestableCandidateGenFunc(proposals [][5]int) func() [3][5]int {
-	mi.team1RankBoundaryOpinions = proposals
+	mi.team1RankBoundaryProposals = proposals
 	return mi.team1_GenerateRankBoundaryCandidates
 }
