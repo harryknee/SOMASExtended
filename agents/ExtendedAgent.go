@@ -593,7 +593,34 @@ func (mi *ExtendedAgent) Team1_ChairUpdateRanks(currentRanking map[uuid.UUID]int
 	return newRanking
 }
 
-func (mi *ExtendedAgent) Team1_VoteOnRankBoundaries(initialBoundaries [5]int) [5]int {
+
+/**
+* Agrees the rank boundaries as a social decision. This is called as part of
+* pre-roll logic, using various helper functions below. 
+*/
+func (mi *ExtendedAgent) Team1_AgreeRankBoundaries() [5]int {
+    // Step 1. Gather boundary preferences
+    prefs := mi.team1_GatherRankBoundaryPreferences()
+
+    // Step 2. Generate candidates using statistical analysis of individual
+    // agent preferences, providing 3 options to choose from
+    cands := mi.team1_GenerateRankBoundaryCandidates(prefs)
+
+    // Step 3. Conduct a vote on the candidates 
+    elected := mi.team1_VoteOnRankBoundaries(cands)
+
+    return elected
+}
+
+func (mi *ExtendedAgent) team1_GatherRankBoundaryPreferences() [][5]int {
+    return [][5]int{{1, 2, 3, 4, 5}}
+}
+
+func (mi *ExtendedAgent) team1_GenerateRankBoundaryCandidates(preferences [][5]int) [3][5]int {
+    print(preferences)
+    return [3][5]int{{1, 2, 3, 4, 5}, {1, 2, 3, 4, 5}, {1, 2, 3, 4, 5}}
+}
+func (mi *ExtendedAgent) team1_VoteOnRankBoundaries(cands [3][5]int) [5]int {
 	// Default behaviour should just vote for the guideline rank boundaries
-	return initialBoundaries
+	return cands[0]
 }

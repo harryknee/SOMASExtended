@@ -215,7 +215,8 @@ func (t *Team1AoA) SelectNChairs(agentIds []uuid.UUID, n int) []uuid.UUID {
 * system to 'self-organise' itself and decide on institutionalised facts
 */
 func (t *Team1AoA) RunPreRollLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {
-    log.Printf("Running pre-roll logic for team 1")
+    // Step 1: Gather initial rank boundary preferences
+    
 }
 
 func (t *Team1AoA) RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {
@@ -229,15 +230,7 @@ func (t *Team1AoA) RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUI
 
 	for i := 0; i < 10; i++ {
 		chairsAgree := false
-		// listOfAgentRankVotes := make([]map[uuid.UUID]int, 0)
-
-		// call function for agents to vote on ranks
-		// for _, agentId := range team.Agents {
-		// 	agent := agentMap[agentId]
-		// 	ranks := agent.Team1_GetTeamRanks()
-		// 	listOfAgentRankVotes = append(listOfAgentRankVotes, ranks)
-		// }
-
+		
 		chairs := t.SelectNChairs(team.Agents, 2)
 		for _, chairId := range chairs {
 			chair := agentMap[chairId]
