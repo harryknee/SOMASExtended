@@ -92,8 +92,11 @@ func (mi *MI_256_v1) Team4_GetRankUpVote() map[uuid.UUID]int {
 	}
 
 	fmt.Println(rankUpVote)
-	mi.Team4_SetConfession(true)
 	return rankUpVote
+}
+
+func (mi *MI_256_v1) Team4_GetConfession() bool {
+	return true
 }
 
 func (mi *MI_256_v1) Team4_GetProposedWithdrawalVote() map[uuid.UUID]int {
