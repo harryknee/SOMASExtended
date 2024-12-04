@@ -18,10 +18,11 @@ type IArticlesOfAssociation interface {
 	GetWithdrawalAuditResult(agentId uuid.UUID) bool
 	SetContributionAuditResult(agentId uuid.UUID, agentScore int, agentActualContribution int, agentStatedContribution int)
 	GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID
-	SetRankUp(map[uuid.UUID]map[uuid.UUID]int)
-	RunProposedWithdrawalVote(map[uuid.UUID]int, map[uuid.UUID]map[uuid.UUID]int)
-	HandleConfessionAuditResult(confession bool, agentId uuid.UUID, agentScore int) int
-	HandlePunishmentVote(map[uuid.UUID]map[int]int) int
+
+	// Team 4 AoA Specific Functions
+	AoA4SetRankUp(map[uuid.UUID]map[uuid.UUID]int)
+	AoA4RunProposedWithdrawalVote(map[uuid.UUID]int, map[uuid.UUID]map[uuid.UUID]int)
+	AoA4HandlePunishmentVote(map[uuid.UUID]map[int]int) int
 }
 
 func CreateVote(isVote int, voterId uuid.UUID, votedForId uuid.UUID) Vote {

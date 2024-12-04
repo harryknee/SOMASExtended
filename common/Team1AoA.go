@@ -98,20 +98,6 @@ func (t *Team1AoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
 	return agentIDs
 }
 
-// Do nothing
-func (t *Team1AoA) SetRankUp(map[uuid.UUID]map[uuid.UUID]int) {
-}
-
-func (t *Team1AoA) RunProposedWithdrawalVote(map[uuid.UUID]int, map[uuid.UUID]map[uuid.UUID]int) {
-}
-
-func (t *Team1AoA) HandleConfessionAuditResult(confession bool, agentId uuid.UUID, agentScore int) int {
-	return 0
-}
-func (t *Team1AoA) HandlePunishmentVote(map[uuid.UUID]map[int]int) int {
-	return 0
-}
-
 func CreateTeam1AoA(team *Team) IArticlesOfAssociation {
 	auditResult := make(map[uuid.UUID]*list.List)
 	ranking := make(map[uuid.UUID]int)
@@ -125,4 +111,14 @@ func CreateTeam1AoA(team *Team) IArticlesOfAssociation {
 		ranking:     ranking,
 		threshold:   5,
 	}
+}
+
+// Do nothing
+func (t *Team1AoA) AoA4SetRankUp(map[uuid.UUID]map[uuid.UUID]int) {
+}
+
+func (t *Team1AoA) AoA4RunProposedWithdrawalVote(map[uuid.UUID]int, map[uuid.UUID]map[uuid.UUID]int) {
+}
+func (t *Team1AoA) AoA4HandlePunishmentVote(map[uuid.UUID]map[int]int) int {
+	return 0
 }
