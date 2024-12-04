@@ -542,3 +542,24 @@ func (mi *ExtendedAgent) RecordAgentStatus(instance common.IExtendedAgent) gameR
 	)
 	return record
 }
+
+// ----------------------- Team 2 AoA Functions -----------------------
+
+func (mi *ExtendedAgent) Team2_GetLeaderVote() common.Vote {
+	log.Printf("[WARNING] Base Leader Vote Function Called")
+	// Shouldn't happen, but if it does, then vote for yourself
+	if mi.TeamID == uuid.Nil || mi.TeamID == (uuid.UUID{}) {
+		return common.CreateVote(1, mi.GetID(), mi.GetID())
+	}
+
+	agentsInTeam := mi.Server.GetAgentsInTeam(mi.TeamID)
+
+	if len(agentsInTeam) == 0 {
+		return common.CreateVote(1, mi.GetID(), mi.GetID())
+	}
+
+	// Randomly select a leader
+	leader := agentsInTeam[rand.Intn(len(agentsInTeam))]
+
+	return common.CreateVote(1, mi.GetID(), leader)
+}

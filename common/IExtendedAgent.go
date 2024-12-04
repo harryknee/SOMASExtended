@@ -77,4 +77,7 @@ type IExtendedAgent interface {
 	Team1_BoundaryProposalResponseHandler(msg *Team1RankBoundaryResponseMessage)
 	Team1_BoundaryBallotRequestHandler(msg *Team1BoundaryBallotRequestMessage)
 	Team1_BoundaryBallotResponseHandler(msg *Team1BoundaryBallotResponseMessage)
+
+	// Team 2 specific functions
+	Team2_GetLeaderVote() Vote
 }

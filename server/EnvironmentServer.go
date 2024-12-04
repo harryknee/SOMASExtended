@@ -30,9 +30,14 @@ type EnvironmentServer struct {
 	DataRecorder *gameRecorder.ServerDataRecorder
 
 	// server internal state
-	turn           int
-	iteration      int
-	thresholdTurns int
+	turn                   int
+	iteration              int
+	thresholdTurns         int
+	thresholdAppliedInTurn bool
+}
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
 }
 
 func init() {
@@ -172,13 +177,14 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 
 	if cs.turn%cs.thresholdTurns == 0 && cs.turn > 1 {
 		cs.ApplyThreshold()
+	} else {
+		cs.thresholdAppliedInTurn = false // record data
 	}
 
-	cs.teamsMutex.Lock()
-
-	// record data
-	cs.RecordTurnInfo()
-	cs.teamsMutex.Unlock()
+	// do not record if the turn number is 0
+	if cs.turn > 0 {
+		cs.RecordTurnInfo()
+	}
 }
 
 func (cs *EnvironmentServer) RunStartOfIteration(iteration int) {
@@ -215,15 +221,15 @@ func runCopelandVote(team *common.Team, cs *EnvironmentServer) []int {
 	pairwiseWins := make(map[string]int)
 	copelandScores := make(map[byte]float64)
 
-	fmt.Printf("Starting Copeland Vote for Team %s with %d members.\n", team.TeamID, len(team.Agents))
+	log.Printf("Starting Copeland Vote for Team %s with %d members.\n", team.TeamID, len(team.Agents))
 	// Loop through each agent in the team
 
 	for _, agent := range team.Agents {
 
 		agentAoARanking := cs.GetAgentMap()[agent].GetAoARanking()
 
-		fmt.Printf("Agent %s has the following AoA rankings:\n", agent)
-		fmt.Println(agentAoARanking)
+		log.Printf("Agent %s has the following AoA rankings:\n", agent)
+		log.Println(agentAoARanking)
 
 		// Loop through each pair of ranked candidates and perform pairwise comparison
 		for i := 0; i < len(agentAoARanking); i++ {
@@ -232,18 +238,18 @@ func runCopelandVote(team *common.Team, cs *EnvironmentServer) []int {
 
 					pair := []int{agentAoARanking[i], agentAoARanking[j]}
 
-					pairKey := fmt.Sprintf("%d%d", pair[0], pair[1])
+					pairKey := fmt.Sprintf("%d-%d", pair[0], pair[1])
 
-					fmt.Printf("Agent %s: Comparing candidates %d and %d. Winner: %d\n", agent, pair[0], pair[1], pair[0])
+					log.Printf("Agent %s: Comparing candidates %d and %d. Winner: %d\n", agent, pair[0], pair[1], pair[0])
 
 					pairwiseWins[pairKey]++
 				} else {
 
 					pair := []int{agentAoARanking[j], agentAoARanking[i]}
 
-					pairKey := fmt.Sprintf("%d%d", pair[0], pair[1])
+					pairKey := fmt.Sprintf("%d-%d", pair[0], pair[1])
 
-					fmt.Printf("Agent %s: Comparing candidates %d and %d. Winner: %d\n", agent, pair[1], pair[0], pair[1])
+					log.Printf("Agent %s: Comparing candidates %d and %d. Winner: %d\n", agent, pair[1], pair[0], pair[1])
 
 					pairwiseWins[pairKey] -= 1
 				}
@@ -252,29 +258,29 @@ func runCopelandVote(team *common.Team, cs *EnvironmentServer) []int {
 		}
 	}
 
-	fmt.Println(pairwiseWins)
+	log.Println(pairwiseWins)
 	for pair, score := range pairwiseWins {
 		// Subtract ASCII value of 0
 		candidate1 := pair[0] - 48
 		candidate2 := pair[1] - 48
 
-		fmt.Printf("Processing pair %s (candidate 1: %d, candidate 2: %d), score: %d\n", pair, candidate1, candidate2, score)
+		log.Printf("Processing pair %s (candidate 1: %d, candidate 2: %d), score: %d\n", pair, candidate1, candidate2, score)
 
 		if score > 0 {
 			copelandScores[candidate1] += 1
-			fmt.Printf("Candidate %d wins, Copeland score updated: %v\n", candidate1, copelandScores[candidate1])
+			log.Printf("Candidate %d wins, Copeland score updated: %v\n", candidate1, copelandScores[candidate1])
 
 		} else if score < 0 {
 			copelandScores[candidate2] += 1
-			fmt.Printf("Candidate %d wins, Copeland score updated: %v\n", candidate2, copelandScores[candidate2])
+			log.Printf("Candidate %d wins, Copeland score updated: %v\n", candidate2, copelandScores[candidate2])
 		} else {
 			copelandScores[candidate1] += 0.5
 			copelandScores[candidate2] += 0.5
-			fmt.Printf("It's a tie! Copeland scores updated: %v, %v\n", copelandScores[candidate1], copelandScores[candidate2])
+			log.Printf("It's a tie! Copeland scores updated: %v, %v\n", copelandScores[candidate1], copelandScores[candidate2])
 
 		}
 	}
-	fmt.Println(copelandScores)
+	log.Println(copelandScores)
 
 	var maxScore float64
 	var maxCandidates []int
@@ -288,7 +294,7 @@ func runCopelandVote(team *common.Team, cs *EnvironmentServer) []int {
 		}
 	}
 
-	fmt.Printf("\nWinning candidates for Team %s: %v\n", team.TeamID, maxCandidates)
+	log.Printf("\nWinning candidates for Team %s: %v\n", team.TeamID, maxCandidates)
 
 	return maxCandidates
 }
@@ -306,21 +312,21 @@ func runBordaVote(team *common.Team, aoaCandidates []int, cs *EnvironmentServer)
 	for _, agent := range team.Agents {
 
 		agentRanking := cs.GetAgentMap()[agent].GetAoARanking()
-		fmt.Printf("Agent %s has the following AoA rankings:\n", agent)
-		fmt.Println((agentRanking))
+		log.Printf("Agent %s has the following AoA rankings:\n", agent)
+		log.Println((agentRanking))
 
 		// Check if the current AoA is a candidate
 		for vote, aoa := range agentRanking {
 			if _, exists := aoaCandidatesSet[aoa]; exists {
 				points := n - vote - 1
 				voteSum[aoa] += points
-				fmt.Printf("Agent %s votes for AoA %d with %d point\n", agent, aoa, points)
+				log.Printf("Agent %s votes for AoA %d with %d point\n", agent, aoa, points)
 			}
 		}
 	}
 
-	fmt.Println("\nCandidates scores:")
-	fmt.Println(voteSum)
+	log.Println("\nCandidates scores:")
+	log.Println(voteSum)
 	var filtered []int
 
 	if len(voteSum) == 1 {
@@ -340,12 +346,12 @@ func runBordaVote(team *common.Team, aoaCandidates []int, cs *EnvironmentServer)
 			filtered = append(filtered, candidate)
 		}
 
-		fmt.Printf("Processing candidate %d with score %d\n", candidate, score)
+		log.Printf("Processing candidate %d with score %d\n", candidate, score)
 	}
 
 	// Remove candidates below a threshold (check if there are ties)
-	fmt.Println("\nFiltered candidates after tie removal:")
-	fmt.Println(filtered)
+	log.Println("\nFiltered candidates after tie removal:")
+	log.Println(filtered)
 
 	return filtered
 }
@@ -354,7 +360,7 @@ func (cs *EnvironmentServer) allocateAoAs() {
 	for _, team := range cs.Teams {
 		winners := runCopelandVote(team, cs)
 		if len(winners) > 1 {
-			fmt.Println("Multiple winners detected. Running Borda Vote.")
+			log.Println("Multiple winners detected. Running Borda Vote.")
 			winners = runBordaVote(team, winners, cs)
 		}
 		// Select random AoA if still tied, else select 'winner'
@@ -371,7 +377,7 @@ func (cs *EnvironmentServer) allocateAoAs() {
 			case 1:
 				team.TeamAoA = common.CreateTeam1AoA(team)
 			case 2:
-				team.TeamAoA = common.CreateTeam2AoA(5)
+				team.TeamAoA = common.CreateTeam2AoA(team, uuid.Nil, 5)
 			case 3:
 				team.TeamAoA = common.CreateFixedAoA(1)
 			case 4:
@@ -386,7 +392,7 @@ func (cs *EnvironmentServer) allocateAoAs() {
 			}
 
 			cs.Teams[team.TeamID] = team
-			fmt.Printf("Team %v has AoA: %v\n", team.TeamID, winners[randomI])
+			log.Printf("Team %v has AoA: %v\n", team.TeamID, winners[randomI])
 
 		}
 	}
@@ -491,6 +497,7 @@ func (cs *EnvironmentServer) killAgentBelowThreshold(agentID uuid.UUID) int {
 	agent := cs.GetAgentMap()[agentID]
 	score := agent.GetTrueScore()
 	if score < cs.roundScoreThreshold {
+		agent.SetTrueScore(0)
 		cs.killAgent(agentID)
 	}
 	return score
@@ -504,21 +511,31 @@ func (cs *EnvironmentServer) killAgent(agentID uuid.UUID) {
 	if teamID := agent.GetTeamID(); teamID != uuid.Nil {
 		// cs.teamsMutex.Lock()
 		// defer cs.teamsMutex.Unlock()
+		log.Printf("[server] Finding agent %v to be killed\n", agentID)
 
 		team := cs.Teams[teamID]
 		// check if team exists (patch fix - TODO check the root of the error)
 		if team == nil {
 			log.Printf("[server] Team %v does not exist\n", teamID)
 		} else {
+			indexOfAgent := -1
 			for i, id := range team.Agents {
 				if id == agentID {
 					// Remove agent from the team
-					team.Agents = append(team.Agents[:i], team.Agents[i+1:]...)
-					cs.Teams[teamID] = team
-					// Set the team of the agent to Nil
-					agent.SetTeamID(uuid.Nil)
+					indexOfAgent = i
 					break
 				}
+			}
+
+			if indexOfAgent == -1 {
+				log.Printf("[server] Agent %v not found in team %v\n", agentID, teamID)
+			} else {
+				log.Printf("[server] Found agent %v and removing from team %v\n", agentID, teamID)
+				// Remove agent from the
+				team.Agents = append(team.Agents[:indexOfAgent], team.Agents[indexOfAgent+1:]...)
+				cs.Teams[teamID] = team
+				// Set the team of the agent to Nil
+				agent.SetTeamID(uuid.Nil)
 			}
 		}
 	}
@@ -677,42 +694,57 @@ func (cs *EnvironmentServer) ResetAgents() {
 }
 
 func (cs *EnvironmentServer) ApplyThreshold() {
+	cs.thresholdAppliedInTurn = true
 	for _, team := range cs.Teams {
 		team.SetCommonPool(0)
-		for _, agentID := range team.Agents {
-			if !cs.IsAgentDead(agentID) {
-				cs.killAgentBelowThreshold(agentID)
-			}
-			if agent := cs.GetAgentMap()[agentID]; agent != nil {
-				agent.SetTrueScore(0)
-			}
-		}
+	}
+
+	for _, agent := range cs.GetAgentMap() {
+		cs.killAgentBelowThreshold(agent.GetID())
 	}
 }
 
 func (cs *EnvironmentServer) RecordTurnInfo() {
-
 	// agent information
 	agentRecords := []gameRecorder.AgentRecord{}
 	for _, agent := range cs.GetAgentMap() {
+		if agent.GetTeamID() == uuid.Nil {
+			// Skip agents that are not in a team
+			continue
+		}
 		newAgentRecord := agent.RecordAgentStatus(agent)
 		newAgentRecord.IsAlive = true
+		newAgentRecord.TurnNumber = cs.turn
+		newAgentRecord.IterationNumber = cs.iteration
 		agentRecords = append(agentRecords, newAgentRecord)
 	}
 
 	for _, agent := range cs.deadAgents {
+		if agent.GetTeamID() == uuid.Nil {
+			// Skip agents that are not in a team
+			continue
+		}
 		newAgentRecord := agent.RecordAgentStatus(agent)
 		newAgentRecord.IsAlive = false
+		newAgentRecord.TurnNumber = cs.turn
+		newAgentRecord.IterationNumber = cs.iteration
 		agentRecords = append(agentRecords, newAgentRecord)
 	}
 
+	// team information
 	teamRecords := []gameRecorder.TeamRecord{}
 	for _, team := range cs.Teams {
 		newTeamRecord := gameRecorder.NewTeamRecord(team.TeamID)
+		newTeamRecord.TurnNumber = cs.turn
+		newTeamRecord.IterationNumber = cs.iteration
+		newTeamRecord.TeamCommonPool = team.GetCommonPool()
 		teamRecords = append(teamRecords, newTeamRecord)
 	}
 
-	cs.DataRecorder.RecordNewTurn(agentRecords, teamRecords)
+	// common information
+	newCommonRecord := gameRecorder.NewCommonRecord(cs.turn, cs.iteration, cs.roundScoreThreshold, cs.thresholdAppliedInTurn)
+
+	cs.DataRecorder.RecordNewTurn(agentRecords, teamRecords, newCommonRecord)
 }
 
 func (cs *EnvironmentServer) Team5_RunTurn(team *common.Team) {
