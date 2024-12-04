@@ -78,8 +78,8 @@ func TestGenerateCandidates(t *testing.T) {
 	testData := []reflect.Value{reflect.ValueOf(data)} // don't ask
 	testableCandidateGenFunc := value.Call(testData)[0]
 
-	expected_lower := [5]int{11, 15, 20, 25, 25}
-	expected_average := [5]int{11, 19, 28, 35, 40}
+	expected_lower := [5]int{6, 11, 15, 18, 25}
+	expected_average := [5]int{11, 19, 28, 35, 45}
 	expected_upper := [5]int{12, 22, 31, 41, 50}
 
 	candidates := testableCandidateGenFunc.Call(nil)[0]
