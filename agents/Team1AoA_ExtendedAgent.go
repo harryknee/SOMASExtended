@@ -3,12 +3,11 @@ package agents
 /* Contains functions relevant to agent functionality when the AoA is Team1AoA */
 
 import (
-	"log"
 	"github.com/google/uuid"
+	"log"
 
 	common "github.com/ADimoska/SOMASExtended/common"
 )
-
 
 func (mi *ExtendedAgent) Team1_ChairUpdateRanks(currentRanking map[uuid.UUID]int) map[uuid.UUID]int {
 	// Chair iterates through existing rank map in team
@@ -24,63 +23,57 @@ func (mi *ExtendedAgent) Team1_ChairUpdateRanks(currentRanking map[uuid.UUID]int
 	return newRanking
 }
 
-
 /**
 * Agrees the rank boundaries as a social decision. This is called as part of
 * pre-roll logic, using various helper functions below. This function will only
 * be called by an elected chair
-*/
+ */
 func (mi *ExtendedAgent) Team1_AgreeRankBoundaries() [5]int {
-    // Step 1. Gather boundary opinions
-    prefs := mi.team1_GatherRankBoundaryPreferences()
+	// Step 1. Gather boundary opinions
+	mi.team1_GatherRankBoundaryOpinions()
 
-    // Step 2. Generate candidates using statistical analysis of individual
-    // agent opinions, providing 3 options to choose from
-    cands := mi.team1_GenerateRankBoundaryCandidates(prefs)
+	// Step 2. Generate candidates using statistical analysis of individual
+	// agent opinions, providing 3 options to choose from
+	cands := mi.team1_GenerateRankBoundaryCandidates()
 
-    // Step 3. Conduct a vote on the candidates 
-    elected := mi.team1_VoteOnRankBoundaries(cands)
+	// Step 3. Conduct a vote on the candidates
+	elected := mi.team1_VoteOnRankBoundaries(cands)
 
-    return elected
+	return elected
 }
 
 /**
 * Go through all the agents, and ask them what they would like the rank
 * boundaries to be. Their returned value is completely up to the agent
 * strategy.
-*/
-func (mi *ExtendedAgent) team1_GatherRankBoundaryPreferences() [][5]int {
+ */
+func (mi *ExtendedAgent) team1_GatherRankBoundaryOpinions() {
 
-    opinions := make([][5]int, 0)
+	// Same request for all agents
+	req := &common.Team1RankBoundaryRequestMessage{
+		BaseMessage: mi.CreateBaseMessage(),
+	}
 
-    // Same request for all agents
-    req := &common.Team1RankBoundaryRequestMessage{
-        BaseMessage:  mi.CreateBaseMessage(),
-    }
+	// Clear existing memory
+	mi.team1RankBoundaryOpinions = mi.team1RankBoundaryOpinions[0:]
 
-    // Clear existing memory
-    mi.team1RankBoundaryOpinions = mi.team1RankBoundaryOpinions[0:]
-
-    // Iterate over all agents and ask them for their opinions. We do not
-    // store who each vote came from to enforce anonymity
-    for _, agentID := range mi.Server.GetAgentsInTeam(mi.TeamID) {
-        mi.SendSynchronousMessage(req, agentID)
-    }
-
-    return opinions
+	// Iterate over all agents and ask them for their opinions. We do not
+	// store who each vote came from to enforce anonymity
+	for _, agentID := range mi.Server.GetAgentsInTeam(mi.TeamID) {
+		mi.SendSynchronousMessage(req, agentID)
+	}
 }
 
 /**
 * Generate the candidates based off the opinions expressed by the agents
-*/
-func (mi *ExtendedAgent) team1_GenerateRankBoundaryCandidates(opinions [][5]int) [3][5]int {
-    print(opinions)
-    return [3][5]int{{1, 2, 3, 4, 5}, {1, 2, 3, 4, 5}, {1, 2, 3, 4, 5}}
+ */
+func (mi *ExtendedAgent) team1_GenerateRankBoundaryCandidates() [3][5]int {
+	return [3][5]int{{1, 2, 3, 4, 5}, {1, 2, 3, 4, 5}, {1, 2, 3, 4, 5}}
 }
 
 /**
 * Conduct a vote on the expressed candidates, and elect a winner
-*/
+ */
 func (mi *ExtendedAgent) team1_VoteOnRankBoundaries(cands [3][5]int) [5]int {
 	// Default behaviour just returns the first candidate
 	return cands[0]
@@ -89,18 +82,44 @@ func (mi *ExtendedAgent) team1_VoteOnRankBoundaries(cands [3][5]int) [5]int {
 /**
 * OVERRIDE
 * You get a say in what you think the rank boundaries should be!
-*/
+ */
 func (mi *ExtendedAgent) Team1_BoundaryOpinionRequestHandler(msg *common.Team1RankBoundaryRequestMessage) {
-    sender := msg.GetSender()
-    resp :=  &common.Team1RankBoundaryResponseMessage{
-		BaseMessage:  mi.CreateBaseMessage(),
-        Bounds: [5]int{1, 2, 3, 4, 4},
+	/* BASE IMPLEMENTATION (not a good strategy :D)
+
+	   - Agent sets the rankings such that they are in the 'middle rank'
+	       - Get your current score
+	       - Assume this is the boundary for rank 3
+	       - Add / Subtract 15% for each of the higher / lower ranks
+
+	       i.e. if agent score is 36, then the agent would submit the opinion:
+
+	       {25, 31, 36, 41, 47}
+
+	       Where each of the higher / lower rank bounds are calculated by adding
+	       0.15 * 36 and rounding.
+	*/
+
+	fscore := float32(mi.Score)
+	delta := fscore * 0.15
+
+	// What I think the bounds should be
+	opinion := [5]int{int(fscore - 2.0*delta), int(fscore - delta), mi.Score,
+		int(fscore + delta), int(fscore + 2.0*delta)}
+
+	resp := &common.Team1RankBoundaryResponseMessage{
+		BaseMessage: mi.CreateBaseMessage(),
+		Bounds:      opinion,
 	}
-    mi.SendSynchronousMessage(resp, sender)
+	mi.SendSynchronousMessage(resp, msg.GetSender())
 }
 
 func (mi *ExtendedAgent) Team1_BoundaryOpinionResponseHandler(msg *common.Team1RankBoundaryResponseMessage) {
-    log.Printf("Chair %v received rank boundary opinion from %v", mi.GetID(), msg.GetSender())
-    mi.team1RankBoundaryOpinions = append(mi.team1RankBoundaryOpinions, msg.Bounds)
-    mi.SignalMessagingComplete()
+	log.Printf("Chair %v received rank boundary opinion %v from %v", mi.GetID(), msg.Bounds, msg.GetSender())
+	mi.team1RankBoundaryOpinions = append(mi.team1RankBoundaryOpinions, msg.Bounds)
+	mi.SignalMessagingComplete()
+}
+
+// Returns the non-exported function for testing
+func (mi *ExtendedAgent) TestableGatherFunc() func() {
+	return mi.team1_GatherRankBoundaryOpinions
 }

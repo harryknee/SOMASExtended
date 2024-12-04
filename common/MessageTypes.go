@@ -42,12 +42,12 @@ type AgentOpinionResponseMessage struct {
 
 type Team1RankBoundaryRequestMessage struct {
 	message.BaseMessage
-    // Could possibly provide additional info to guide agent decision here
+	// Could possibly provide additional info to guide agent decision here
 }
 
 type Team1RankBoundaryResponseMessage struct {
 	message.BaseMessage
-    Bounds [5]int 
+	Bounds [5]int
 }
 
 func (msg *TeamFormationMessage) InvokeMessageHandler(agent IExtendedAgent) {
@@ -81,4 +81,3 @@ func (msg *Team1RankBoundaryRequestMessage) InvokeMessageHandler(agent IExtended
 func (msg *Team1RankBoundaryResponseMessage) InvokeMessageHandler(agent IExtendedAgent) {
 	agent.Team1_BoundaryOpinionResponseHandler(msg)
 }
-

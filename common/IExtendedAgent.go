@@ -72,9 +72,9 @@ type IExtendedAgent interface {
 	// Data Recording
 	RecordAgentStatus(instance IExtendedAgent) gameRecorder.AgentRecord
 
-	// Team 1 specific functions
+	// Team 1AoA specific functions
 	Team1_ChairUpdateRanks(rankMap map[uuid.UUID]int) map[uuid.UUID]int
-    Team1_AgreeRankBoundaries() [5]int
-    Team1_BoundaryOpinionRequestHandler(msg *Team1RankBoundaryRequestMessage)
-    Team1_BoundaryOpinionResponseHandler(msg *Team1RankBoundaryResponseMessage)
+	Team1_AgreeRankBoundaries() [5]int
+	Team1_BoundaryOpinionRequestHandler(msg *Team1RankBoundaryRequestMessage)
+	Team1_BoundaryOpinionResponseHandler(msg *Team1RankBoundaryResponseMessage)
 }

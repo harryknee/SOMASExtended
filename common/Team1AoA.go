@@ -209,14 +209,13 @@ func (t *Team1AoA) SelectNChairs(agentIds []uuid.UUID, n int) []uuid.UUID {
 	return selectedChairs
 }
 
-
 /**
 * Set-up logic that can be called at the start of a turn in order for the
 * system to 'self-organise' itself and decide on institutionalised facts
-*/
+ */
 func (t *Team1AoA) RunPreRollAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {
-    // Agree on boundaries
-    
+	// Agree on boundaries
+
 }
 
 func (t *Team1AoA) RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {
@@ -230,7 +229,7 @@ func (t *Team1AoA) RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUI
 
 	for i := 0; i < 10; i++ {
 		chairsAgree := false
-		
+
 		chairs := t.SelectNChairs(team.Agents, 2)
 		for _, chairId := range chairs {
 			chair := agentMap[chairId]
@@ -275,8 +274,8 @@ func mapsEqual(a, b map[uuid.UUID]int) bool {
 }
 
 func (t *Team1AoA) GetAgentNewRank(agentId uuid.UUID) int {
-    // total stated contributions of this agent (over the last n turns)
-	agentTotalContributions := t.agentLQueue[agentId].Sum() 
+	// total stated contributions of this agent (over the last n turns)
+	agentTotalContributions := t.agentLQueue[agentId].Sum()
 
 	agentCurrentRank := t.ranking[agentId]
 	// iterate from the highest rank to the lowest rank
