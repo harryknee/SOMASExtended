@@ -210,12 +210,57 @@ func (t *Team1AoA) SelectNChairs(agentIds []uuid.UUID, n int) []uuid.UUID {
 }
 
 /**
-* Set-up logic that can be called at the start of a turn in order for the
-* system to 'self-organise' itself and decide on institutionalised facts
+* Set-up logic that can be called at the start of an iteration in order for
+* the system to 'self-organise' itself and decide on institutionalised facts
  */
-func (t *Team1AoA) RunPreRollAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {
-	// Agree on boundaries
+func (t *Team1AoA) RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {
+	// Extract keys from map
+	agentIDs := make([]uuid.UUID, len(agentMap))
+	i := 0
+	for k := range agentMap {
+		agentIDs[i] = k
+		i++
+	}
 
+	var chair1res [5]int // result of first randomly-elected chair
+	var chair2res [5]int // result of second randomly-elected chair
+	socialDecision := false
+
+	// Attempt 10 times to get an agreed-upon vote
+	for range 10 {
+		// Select two chairs
+		chairs := t.SelectNChairs(agentIDs, 2)
+		chair1 := chairs[0]
+		chair2 := chairs[1]
+
+		// Ask both chairs to conduct a vote on what the rankings should be.
+		// This will be a collective decision conducted in two steps, see
+		// Team1AoA_ExtendedAgent.go for more details.
+		chair1res = agentMap[chair1].Team1_AgreeRankBoundaries()
+		chair2res = agentMap[chair2].Team1_AgreeRankBoundaries()
+
+		// Punish BOTH chairs if the results do not match
+		if chair1res != chair2res {
+			// Decrement ranking down to a minimum of 1
+			if t.ranking[chair1] > 1 {
+				t.ranking[chair1]--
+			}
+			if t.ranking[chair2] > 1 {
+				t.ranking[chair2]--
+			}
+		} else {
+			socialDecision = true
+			break
+		}
+	}
+
+	// We only update the rank boundary if there was a successful social
+	// decision made, in that the results of the chairs matched.
+	if socialDecision {
+		t.rankBoundary = chair1res
+	} else {
+		log.Printf("Rank boundaries unchanged - 10 instances of foul play occurred.")
+	}
 }
 
 func (t *Team1AoA) RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {

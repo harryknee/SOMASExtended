@@ -193,6 +193,11 @@ func (cs *EnvironmentServer) RunStartOfIteration(iteration int) {
 
 	// take votes at team level and allocate Strategy.
 	cs.allocateAoAs()
+
+	// Perform any functionality needed by AoA at start of iteration.
+	for _, team := range cs.Teams {
+		team.TeamAoA.RunPreIterationAoaLogic(team, cs.GetAgentMap())
+	}
 }
 
 // Allocate AoA based on team votes;

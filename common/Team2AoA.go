@@ -1,6 +1,5 @@
 package common
 
-// import "github.com/google/uuid"
 import (
 	"container/list"
 	"math/rand"
@@ -126,7 +125,7 @@ func (t *Team2AoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
 	return shuffledAgents
 }
 
-func (t *Team2AoA) RunPreRollAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent)          {}
+func (t *Team2AoA) RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent)     {}
 func (t *Team2AoA) RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {}
 
 func CreateTeam2AoA(auditDuration int) IArticlesOfAssociation {

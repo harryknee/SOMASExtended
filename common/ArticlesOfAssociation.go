@@ -19,7 +19,7 @@ type IArticlesOfAssociation interface {
 	GetWithdrawalAuditResult(agentId uuid.UUID) bool
 	SetContributionAuditResult(agentId uuid.UUID, agentScore int, agentActualContribution int, agentStatedContribution int)
 	GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID
-	RunPreRollAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent)
+	RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent)
 	RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent)
 }
 
