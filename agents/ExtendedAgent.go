@@ -44,6 +44,7 @@ type ExtendedAgent struct {
 
 	// Team1 AoA Agent Memory
 	team1RankBoundaryProposals [][5]int
+	team1Ballots               [][3]int
 }
 
 type AgentConfig struct {

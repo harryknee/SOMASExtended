@@ -59,7 +59,7 @@ func (mi *ExtendedAgent) team1_GatherRankBoundaryProposals() {
 
 	// Clear temp variable - this is just the location that the chair will add
 	// all the data to as it comes into requests
-	mi.team1RankBoundaryProposals = mi.team1RankBoundaryProposals[0:]
+	mi.team1RankBoundaryProposals = mi.team1RankBoundaryProposals[:0]
 
 	// Iterate over all agents and ask them for their proposals. We do not
 	// store who each vote came from to enforce anonymity
@@ -69,7 +69,7 @@ func (mi *ExtendedAgent) team1_GatherRankBoundaryProposals() {
 }
 
 /**
-* Generate the candidates based off the proposals expressed by the agents
+* Generate the candidates based off the proposals provided by the agents
  */
 func (mi *ExtendedAgent) team1_GenerateRankBoundaryCandidates() [3][5]int {
 	// This function will take the values stored in team1RankBoundaryProposals
@@ -130,11 +130,68 @@ func (mi *ExtendedAgent) team1_GenerateRankBoundaryCandidates() [3][5]int {
 }
 
 /**
-* Conduct a vote on the expressed candidates, and elect a winner
+* Conduct a vote on the expressed candidates, and elect the Condorcet winner
  */
 func (mi *ExtendedAgent) team1_VoteOnRankBoundaries(cands [3][5]int) [5]int {
-	// Default behaviour just returns the first candidate
-	return cands[0]
+
+	// Ask all candidates to vote on their preferences
+	req := &common.Team1BoundaryBallotRequestMessage{
+		BaseMessage: mi.CreateBaseMessage(),
+		Candidates:  cands,
+	}
+
+	mi.team1Ballots = mi.team1Ballots[:0] // clear previous votes
+
+	// Collect all the ballots and store them
+	for _, agentID := range mi.Server.GetAgentsInTeam(mi.TeamID) {
+		mi.SendSynchronousMessage(req, agentID)
+	}
+
+	// Compute pairwise relations for Condorcet winner algorithm
+	pairwise := [3][3]int{
+		{0, 0, 0},
+		{0, 0, 0},
+		{0, 0, 0},
+	}
+
+	for _, vote := range mi.team1Ballots {
+		for i := 0; i < 3; i++ {
+			for j := 0; j < 3; j++ {
+				if vote[i] > vote[j] {
+					pairwise[i][j]++
+				}
+			}
+		}
+	}
+
+	condorcet := -1
+
+	// Check for a Condorcet winner
+	for i := 0; i < 3; i++ {
+		winner := true
+		for j := 0; j < 3; j++ {
+			if i != j && pairwise[i][j] <= pairwise[i][j] {
+				winner = false
+				break
+			}
+		}
+		if winner {
+			condorcet = i
+			break
+		}
+	}
+
+	/* If there is no condorcet winner, we return the median. This is deemed
+	 * acceptable by voluntary association - Using a mean here could be
+	 * influenced heavily by outliers */
+	if condorcet != -1 {
+		log.Printf("Chair %v identified Condorcet winner %v", mi.GetID(), cands[condorcet])
+		return cands[condorcet]
+	} else {
+		// No condorcet winner, return the median.
+		log.Printf("Chair %v could not compute a Condorcet winner. Defaulting to median %v", mi.GetID(), cands[1])
+		return cands[1] // median
+	}
 }
 
 /**
@@ -195,13 +252,33 @@ func (mi *ExtendedAgent) Team1_BoundaryProposalRequestHandler(msg *common.Team1R
 	mi.SendSynchronousMessage(resp, msg.GetSender())
 }
 
+/**
+* BASE IMPLEMENTATION - Always vote for the median, then the lower quartile,
+* then the upper quartile.
+* OVERRIDE - For the 3 candidates provided, give your preference for each one.
+* Use the integers 1, 2, and 3 to represent the 1st, 2nd and 3rd quartiles
+* (they will be provided in order by the chair)
+ */
+func (mi *ExtendedAgent) Team1_BoundaryBallotRequestHandler(msg *common.Team1BoundaryBallotRequestMessage) {
+	resp := &common.Team1BoundaryBallotResponseMessage{
+		BaseMessage:      mi.CreateBaseMessage(),
+		RankedCandidates: [3]int{2, 1, 3},
+	}
+	mi.SendSynchronousMessage(resp, msg.GetSender())
+}
+
 func (mi *ExtendedAgent) Team1_BoundaryProposalResponseHandler(msg *common.Team1RankBoundaryResponseMessage) {
 	log.Printf("Chair %v received rank boundary proposal %v from %v", mi.GetID(), msg.Bounds, msg.GetSender())
 	mi.team1RankBoundaryProposals = append(mi.team1RankBoundaryProposals, msg.Bounds)
 	mi.SignalMessagingComplete()
 }
 
-// Returns the non-exported function for testing
+func (mi *ExtendedAgent) Team1_BoundaryBallotResponseHandler(msg *common.Team1BoundaryBallotResponseMessage) {
+	mi.team1Ballots = append(mi.team1Ballots, msg.RankedCandidates)
+	mi.SignalMessagingComplete()
+}
+
+// Test functions expose non-exported functions for testing purposes
 func (mi *ExtendedAgent) TestableGatherFunc() func() {
 	return mi.team1_GatherRankBoundaryProposals
 }
