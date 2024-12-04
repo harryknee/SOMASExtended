@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func CreateTeam4AoA(team *Team) *Team4 {
+func CreateTeam4AoA(team *Team) *Team4AoA {
 
 	adventurers := make(map[uuid.UUID]struct {
 		Rank               string
@@ -27,13 +27,13 @@ func CreateTeam4AoA(team *Team) *Team4 {
 		auditMap[agent] = []int{}
 	}
 
-	return &Team4{
+	return &Team4AoA{
 		Adventurers: adventurers,
 		AuditMap:    auditMap,
 	}
 }
 
-type Team4 struct {
+type Team4AoA struct {
 	Adventurers map[uuid.UUID]struct {
 		Rank               string
 		ExpectedWithdrawal int
@@ -41,12 +41,12 @@ type Team4 struct {
 	AuditMap map[uuid.UUID][]int
 }
 
-func (t *Team4) GetExpectedContribution(agentId uuid.UUID, agentScore int) int {
+func (t *Team4AoA) GetExpectedContribution(agentId uuid.UUID, agentScore int) int {
 	return 2
 }
 
 // Can take more than this and 'lie'
-func (t *Team4) GetExpectedWithdrawal(agentId uuid.UUID, agentScore int, commonPool int) int {
+func (t *Team4AoA) GetExpectedWithdrawal(agentId uuid.UUID, agentScore int, commonPool int) int {
 	adventurer, exists := t.Adventurers[agentId]
 	if !exists {
 		return 1
@@ -55,12 +55,12 @@ func (t *Team4) GetExpectedWithdrawal(agentId uuid.UUID, agentScore int, commonP
 	return adventurer.ExpectedWithdrawal
 }
 
-func (t *Team4) GetAuditCost(commonPool int) int {
+func (t *Team4AoA) GetAuditCost(commonPool int) int {
 	return 1
 }
 
 // Punishment Voting System
-func (t *Team4) AoA4HandlePunishmentVote(punishmentVoteMap map[uuid.UUID]map[int]int) int {
+func (t *Team4AoA) AoA4HandlePunishmentVote(punishmentVoteMap map[uuid.UUID]map[int]int) int {
 	punishmentGrades := make(map[int][]int)
 
 	for _, votes := range punishmentVoteMap {
@@ -122,7 +122,7 @@ func calculateMedian(grades []int) int {
 	return grades[mid]
 }
 
-func (t *Team4) AoA4SetRankUp(rankUpVoteMap map[uuid.UUID]map[uuid.UUID]int) {
+func (t *Team4AoA) AoA4SetRankUp(rankUpVoteMap map[uuid.UUID]map[uuid.UUID]int) {
 	approvalCounts := make(map[uuid.UUID]int)
 
 	for _, voteMap := range rankUpVoteMap {
@@ -150,7 +150,7 @@ func (t *Team4) AoA4SetRankUp(rankUpVoteMap map[uuid.UUID]map[uuid.UUID]int) {
 	}
 }
 
-func (t *Team4) RankUp(agentID uuid.UUID) {
+func (t *Team4AoA) RankUp(agentID uuid.UUID) {
 	adventurer, exists := t.Adventurers[agentID]
 	if !exists {
 		return
@@ -178,7 +178,7 @@ func (t *Team4) RankUp(agentID uuid.UUID) {
 	t.Adventurers[agentID] = adventurer
 }
 
-func (t *Team4) SetContributionAuditResult(agentId uuid.UUID, agentScore int, agentActualContribution int, agentStatedContribution int) {
+func (t *Team4AoA) SetContributionAuditResult(agentId uuid.UUID, agentScore int, agentActualContribution int, agentStatedContribution int) {
 	// Check if adventurer in Team4 struct
 	adventurer, exists := t.Adventurers[agentId]
 	if !exists {
@@ -204,7 +204,7 @@ func (t *Team4) SetContributionAuditResult(agentId uuid.UUID, agentScore int, ag
 
 }
 
-func (t *Team4) SetWithdrawalAuditResult(agentId uuid.UUID, agentScore int, agentActualWithdrawal int, agentStatedWithdrawal int, commonPool int) {
+func (t *Team4AoA) SetWithdrawalAuditResult(agentId uuid.UUID, agentScore int, agentActualWithdrawal int, agentStatedWithdrawal int, commonPool int) {
 	withdrawalDiff := agentStatedWithdrawal - agentActualWithdrawal
 	if agentStatedWithdrawal > agentActualWithdrawal || agentActualWithdrawal < 2 {
 		t.AuditMap[agentId] = append(t.AuditMap[agentId], withdrawalDiff)
@@ -212,7 +212,7 @@ func (t *Team4) SetWithdrawalAuditResult(agentId uuid.UUID, agentScore int, agen
 	}
 }
 
-func (t *Team4) GetContributionAuditResult(agentId uuid.UUID) bool {
+func (t *Team4AoA) GetContributionAuditResult(agentId uuid.UUID) bool {
 	results := t.AuditMap[agentId]
 
 	if len(results) == 0 {
@@ -222,7 +222,7 @@ func (t *Team4) GetContributionAuditResult(agentId uuid.UUID) bool {
 	return results[len(results)-1] != 0
 }
 
-func (t *Team4) GetWithdrawalAuditResult(agentId uuid.UUID) bool {
+func (t *Team4AoA) GetWithdrawalAuditResult(agentId uuid.UUID) bool {
 	results := t.AuditMap[agentId]
 
 	if len(results) == 0 {
@@ -232,11 +232,11 @@ func (t *Team4) GetWithdrawalAuditResult(agentId uuid.UUID) bool {
 	return results[len(results)-1] != 0
 }
 
-func (t *Team4) ResetAuditMap() {
+func (t *Team4AoA) ResetAuditMap() {
 	t.AuditMap = make(map[uuid.UUID][]int)
 }
 
-func (t *Team4) AoA4RunProposedWithdrawalVote(proposedWithdrawalMap map[uuid.UUID]int, withdrawalVoteMap map[uuid.UUID]map[uuid.UUID]int) {
+func (t *Team4AoA) AoA4RunProposedWithdrawalVote(proposedWithdrawalMap map[uuid.UUID]int, withdrawalVoteMap map[uuid.UUID]map[uuid.UUID]int) {
 	agentVoteWeightMap := make(map[uuid.UUID]int)
 
 	for voterID, voteMap := range withdrawalVoteMap {
@@ -277,7 +277,7 @@ func (t *Team4) AoA4RunProposedWithdrawalVote(proposedWithdrawalMap map[uuid.UUI
 	}
 }
 
-func (t *Team4) GetVoteThreshold() int {
+func (t *Team4AoA) GetVoteThreshold() int {
 	totalAdventurers := len(t.Adventurers)
 
 	threshold := totalAdventurers * 70 / 100
@@ -285,7 +285,7 @@ func (t *Team4) GetVoteThreshold() int {
 	return threshold
 }
 
-func (t *Team4) GetRankUpThreshold() int {
+func (t *Team4AoA) GetRankUpThreshold() int {
 	totalAdventurers := len(t.Adventurers)
 
 	threshold := totalAdventurers / 2
@@ -293,7 +293,7 @@ func (t *Team4) GetRankUpThreshold() int {
 	return threshold
 }
 
-func (t *Team4) GetVoteResult(votes []Vote) uuid.UUID {
+func (t *Team4AoA) GetVoteResult(votes []Vote) uuid.UUID {
 	voteMap := make(map[uuid.UUID]int)
 	for _, vote := range votes {
 		if vote.IsVote >= 1 {
@@ -326,7 +326,7 @@ func (t *Team4) GetVoteResult(votes []Vote) uuid.UUID {
 }
 
 // GetWithdrawalOrder orders adventurers based on their vote weight (highest first).
-func (t *Team4) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
+func (t *Team4AoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
 	type agentWithWeight struct {
 		ID     uuid.UUID
 		Weight int
@@ -357,7 +357,7 @@ func (t *Team4) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
 	return orderedIDs
 }
 
-func (t *Team4) GetVoteWeight(rank string) int {
+func (t *Team4AoA) GetVoteWeight(rank string) int {
 	switch rank {
 	case "SSS":
 		return 10
@@ -378,4 +378,10 @@ func (t *Team4) GetVoteWeight(rank string) int {
 	default:
 		return 0
 	}
+}
+
+// Unused Functions
+
+func (t *Team4AoA) RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {
+
 }

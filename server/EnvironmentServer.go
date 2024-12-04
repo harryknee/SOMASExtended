@@ -61,7 +61,7 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 		agentContributionsTotal += agentActualContribution
 		agentStatedContribution := agent.GetStatedContribution(agent)
 
-		agent.StateContributionToTeam()
+		agent.StateContributionToTeam(agent)
 		agentScore := agent.GetTrueScore()
 		// Update audit result for this agent
 		team.TeamAoA.SetContributionAuditResult(agentID, agentScore, agentActualContribution, agentStatedContribution)
@@ -128,7 +128,7 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 		if agent.GetTeamID() == uuid.Nil || cs.IsAgentDead(agentId) {
 			continue
 		}
-		agent.StateWithdrawalToTeam()
+		agent.StateWithdrawalToTeam(agent)
 	}
 
 	// Initiate Withdrawal Audit vote
@@ -166,7 +166,7 @@ func (cs *EnvironmentServer) RunTurnTeam4(team *common.Team) {
 		agentContributionsTotal += agentActualContribution
 		agentStatedContribution := agent.GetStatedContribution(agent)
 
-		agent.StateContributionToTeam()
+		agent.StateContributionToTeam(agent)
 		agentScore := agent.GetTrueScore()
 		// Update audit result for this agent
 		team.TeamAoA.SetContributionAuditResult(agentID, agentScore, agentActualContribution, agentStatedContribution)
@@ -174,15 +174,13 @@ func (cs *EnvironmentServer) RunTurnTeam4(team *common.Team) {
 	}
 
 	// ***************
-	if reflect.TypeOf(team.TeamAoA) == reflect.TypeOf(common.Team4{}) {
-		rankUpVoteMap := make(map[uuid.UUID]map[uuid.UUID]int)
-		for _, agentID := range team.Agents {
-			agent := cs.GetAgentMap()[agentID]
-			agentRankMap := agent.GetRankUpVote()
-			rankUpVoteMap[agentID] = agentRankMap
-		}
-		team.TeamAoA.AoA4SetRankUp(rankUpVoteMap)
+	rankUpVoteMap := make(map[uuid.UUID]map[uuid.UUID]int)
+	for _, agentID := range team.Agents {
+		agent := cs.GetAgentMap()[agentID]
+		agentRankMap := agent.GetRankUpVote()
+		rankUpVoteMap[agentID] = agentRankMap
 	}
+	team.TeamAoA.AoA4SetRankUp(rankUpVoteMap)
 
 	// ***************
 
@@ -266,7 +264,7 @@ func (cs *EnvironmentServer) RunTurnTeam4(team *common.Team) {
 		if agent.GetTeamID() == uuid.Nil || cs.IsAgentDead(agentId) {
 			continue
 		}
-		agent.StateWithdrawalToTeam()
+		agent.StateWithdrawalToTeam(agent)
 	}
 
 	// Initiate Withdrawal Audit vote
@@ -336,7 +334,7 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 	for _, team := range cs.Teams {
 		teamAoA := reflect.TypeOf(team.TeamAoA)
 		switch teamAoA {
-		case reflect.TypeOf(common.Team4{}):
+		case reflect.TypeOf(common.Team4AoA{}):
 			cs.RunTurnTeam4(team)
 		default:
 			cs.RunTurnDefault(team)
