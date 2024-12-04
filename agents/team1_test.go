@@ -14,15 +14,9 @@ import (
 	baseServer "github.com/MattSScott/basePlatformSOMAS/v2/pkg/server"
 )
 
-// Agent test configuration 1
-var poorAgentCfg = AgentConfig{
-	InitScore:    20, // has a low score
-	VerboseLevel: 10,
-}
-
-// Agent test configuration 2
-var wealthyAgentCfg = AgentConfig{
-	InitScore:    100, // has a higher score
+// Agent test configuration
+var agentConfig = AgentConfig{
+	InitScore:    0,
 	VerboseLevel: 10,
 }
 
@@ -39,12 +33,9 @@ func TestGatherRankBoundaryOpinions(t *testing.T) {
 	agentPopulation := []common.IExtendedAgent{}
 	// Add 4 agents with a low score of 20
 	for range 4 {
-		agentPopulation = append(agentPopulation, GetBaseAgents(serv, poorAgentCfg))
+		agentPopulation = append(agentPopulation, GetBaseAgents(serv, agentConfig))
 	}
-	// Add 6 agents with a higher score of 100
-	for range 6 {
-		agentPopulation = append(agentPopulation, GetBaseAgents(serv, wealthyAgentCfg))
-	}
+
 	// Add all agents to server
 	agentIDs := make([]uuid.UUID, 0)
 	for _, agent := range agentPopulation {

@@ -54,7 +54,8 @@ func (mi *ExtendedAgent) team1_GatherRankBoundaryOpinions() {
 		BaseMessage: mi.CreateBaseMessage(),
 	}
 
-	// Clear existing memory
+	// Clear temp variable - this is just the location that the chair will add
+	// all the data to as it comes into requests
 	mi.team1RankBoundaryOpinions = mi.team1RankBoundaryOpinions[0:]
 
 	// Iterate over all agents and ask them for their opinions. We do not
@@ -80,36 +81,17 @@ func (mi *ExtendedAgent) team1_VoteOnRankBoundaries(cands [3][5]int) [5]int {
 }
 
 /**
-* OVERRIDE
-* You get a say in what you think the rank boundaries should be!
+* BASE IMPLEMENTATION - Always returns the same boundaries.
+* OVERRIDE - You get a say in what you think the rank boundaries should be!
  */
 func (mi *ExtendedAgent) Team1_BoundaryOpinionRequestHandler(msg *common.Team1RankBoundaryRequestMessage) {
-	/* BASE IMPLEMENTATION (not a good strategy :D)
-
-	   - Agent sets the rankings such that they are in the 'middle rank'
-	       - Get your current score
-	       - Assume this is the boundary for rank 3
-	       - Add / Subtract 15% for each of the higher / lower ranks
-
-	       i.e. if agent score is 36, then the agent would submit the opinion:
-
-	       {25, 31, 36, 41, 47}
-
-	       Where each of the higher / lower rank bounds are calculated by adding
-	       0.15 * 36 and rounding.
-	*/
-
-	fscore := float32(mi.Score)
-	delta := fscore * 0.15
-
-	// What I think the bounds should be
-	opinion := [5]int{int(fscore - 2.0*delta), int(fscore - delta), mi.Score,
-		int(fscore + delta), int(fscore + 2.0*delta)}
+	bounds := [5]int{10, 20, 30, 40, 50}
 
 	resp := &common.Team1RankBoundaryResponseMessage{
 		BaseMessage: mi.CreateBaseMessage(),
-		Bounds:      opinion,
+		Bounds:      bounds,
 	}
+
 	mi.SendSynchronousMessage(resp, msg.GetSender())
 }
 
