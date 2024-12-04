@@ -103,11 +103,26 @@ func (mi *ExtendedAgent) team1_GenerateRankBoundaryCandidates() [3][5]int {
 
 	// Go through each rank boundary, and add it to the respective candidate
 	for pos, b := range boundaries {
-		log.Printf("pos is %d", pos)
 		q1, q2, q3 := CalculateQuartiles(b)
 		lower_candidate[pos] = q1
 		avg_candidate[pos] = q2
 		upper_candidate[pos] = q3
+	}
+
+	/* There is a rare edge case here where the median for a higher quartile is
+	 * lower than one for a lower quartile, if you have unprogressive or
+	 * bad-actor agents. We account for this here by strictly enforcing that the
+	 * options are non-decreasing. */
+	for i := 1; i < 5; i++ {
+		if prev := lower_candidate[i-1]; prev > lower_candidate[i] {
+			lower_candidate[i] = lower_candidate[i-1]
+		}
+		if prev := avg_candidate[i-1]; prev > avg_candidate[i] {
+			avg_candidate[i] = avg_candidate[i-1]
+		}
+		if prev := upper_candidate[i-1]; prev > upper_candidate[i] {
+			upper_candidate[i] = upper_candidate[i-1]
+		}
 	}
 
 	cands := [3][5]int{lower_candidate, avg_candidate, upper_candidate}
@@ -132,8 +147,6 @@ func CalculateQuartiles(values []int) (q1, q2, q3 int) {
 	n := len(values)
 	sort.Ints(values)
 
-	log.Printf("Calling for %v", values)
-
 	// Calculate each quartile
 	q1 = calculateMedian(values[:n/2]) // lower quartile
 	q2 = calculateMedian(values)       // median
@@ -157,7 +170,6 @@ func CalculateQuartiles(values []int) (q1, q2, q3 int) {
 * nearest whole number (not truncation)
  */
 func calculateMedian(sortedValues []int) int {
-	log.Printf("Calling median for %v", sortedValues)
 	n := len(sortedValues)
 	var median float64 = 0.0
 	if n%2 == 0 {
