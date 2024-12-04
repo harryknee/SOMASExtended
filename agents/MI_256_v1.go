@@ -22,6 +22,8 @@ type MI_256_v1 struct {
 	affinity map[uuid.UUID]int // has opinions for each agent in the game
 	mood     int               // starting from 0
 
+	affinityChange map[uuid.UUID]int // the total change in affinity this turn
+
 	// store of other character's states (what the id of the agents in the team )
 	teamAgentsDeclaredRolls        map[uuid.UUID]int
 	teamAgentsDeclaredContribution map[uuid.UUID]int
@@ -39,7 +41,7 @@ type MI_256_v1 struct {
 	// TODO: internal states
 
 	// Information I need
-	Common_pool int
+	last_common_pool int
 
 	//AOA parameterss
 	AOAOpinion              map[uuid.UUID]int
@@ -48,15 +50,21 @@ type MI_256_v1 struct {
 	AoAAuditCost            int
 	AoAPunishment           int
 
+	isAoAContributionFixed bool
+	isAoAWithdrawalFixed   bool
+
 	//Intended Withdrawal and Contribution
 	IntendedWithdrawal   int
 	declaredWithdrawal   int
 	intendedContribution int
 	declaredcontribution int
 
-	isThereCheatThisRound bool
-	haveIlied             bool
-	IcaughtLying          bool
+	isThereCheatWithdrawal   bool
+	cheatWithdrawalDiff      int
+	isThereCheatContribution bool
+	cheatContributeDiff      int
+	haveIlied                bool
+	IcaughtLying             bool
 }
 
 // constructor for MI_256_v1
@@ -77,12 +85,13 @@ func (mi *MI_256_v1) UpdateTeamDeclaredRolls() {
 
 func (mi *MI_256_v1) CalcAOAContibution() int {
 
-	mi.AoAExpectedContribution = 0
+	mi.AoAExpectedContribution = 5
 	return mi.AoAExpectedContribution
 
 }
-func (mi *MI_256_v1) CalcAOAWithdrawal() {
-
+func (mi *MI_256_v1) CalcAOAWithdrawal() int {
+	mi.AoAExpectedWithdrawal = 5
+	return mi.AoAExpectedWithdrawal
 }
 func (mi *MI_256_v1) CalcAOAAuditCost() {
 
@@ -97,10 +106,39 @@ func (mi *MI_256_v1) CalcAOAOpinion() {
 // ----------------------- Strategies -----------------------
 
 func (mi *MI_256_v1) AnyoneCheatedAfterContribute() {
-	// get common pool before and after contribution, compare with the total expected contribution, to see if there is a cheat this round
+	common_pool := mi.Server.GetTeam(mi.GetID()).GetCommonPool()
+	change := common_pool - mi.last_common_pool
+	mi.last_common_pool = common_pool
+	sum := 0
+	for _, agent := range mi.Server.GetTeam(mi.GetID()).Agents {
+		sum += mi.teamAgentsDeclaredContribution[agent]
+		// numAgent += 1
+	}
+	if sum != change {
+		mi.isThereCheatContribution = true
+	} else {
+		mi.isThereCheatContribution = false
+	}
+	mi.cheatContributeDiff = sum - change
+
+	// get common pool before and after contribution, compare with the total declared contribution, to see if there is a cheat this round
 
 }
 func (mi *MI_256_v1) AnyoneCheatedAfterWithdrawal() {
+	common_pool := mi.Server.GetTeam(mi.GetID()).GetCommonPool()
+	change := common_pool - mi.last_common_pool
+	mi.last_common_pool = common_pool
+	sum := 0
+	for _, agent := range mi.Server.GetTeam(mi.GetID()).Agents {
+		sum += mi.teamAgentsDeclaredWithdraw[agent]
+		// numAgent += 1
+	}
+	if sum != change {
+		mi.isThereCheatWithdrawal = true
+	} else {
+		mi.isThereCheatWithdrawal = false
+	}
+	mi.cheatWithdrawalDiff = sum - change
 
 }
 
@@ -347,12 +385,152 @@ func (mi *MI_256_v1) GetStatedWithdrawal(instance common.IExtendedAgent) int {
 }
 
 // Audit Strategy
-func (mi *MI_256_v1) DecideAudit() bool {
+func (mi *MI_256_v1) DecideAudit() map[uuid.UUID]int {
+	// you decide who to audit based on your alignment, if there is a cheat happened, and your affinity of other agents, and the net affinity change this round
+	// alignment calculates the likelyhood of you initiating an audit
+	// cheat greatly modifies the likelyhood, if there is cheating detected, then there will be a greater chance of auditing
+	// affinity factors in the suspision,  if someone is declaring large contributions when there is a cheat, taking small sums when there are loads missing from the pool
+	mood_modifier := float64(1.0 / 32.0 * float64(mi.mood))
+	Apply_mood := func(audit_percentage, neutral_mean float64) float64 {
+		if audit_percentage > float64(neutral_mean) {
+			return audit_percentage + mood_modifier
+		} else {
+			return audit_percentage - mood_modifier
+		}
+	}
+	auditmap := make(map[uuid.UUID]int)
+
+	var abs_neutral_mean, neutral_evil_mean, neutral_good_mean, lawful_good_mean, lawful_evil_mean, lawful_neutral_mean, chaotic_neutral_mean, chaotic_evil_mean, chaotic_good_mean float64
+	var chaotic_neutral_standard_deviation, chaotic_good_standard_deviation, chaotic_evil_standard_deviation, neutral_good_standard_deviation, neutral_evil_standard_deviation, abs_neutral_standard_deviation, lawful_good_standard_deviation, lawful_evil_standard_deviation, lawful_neutral_standard_deviation float64
+	if !(mi.isThereCheatWithdrawal || mi.isThereCheatContribution) { // when no cheating happens
+
+		//we model evil and good with different standard deviations, with chaotic being high standard deviation,
+		abs_neutral_mean = 0.1
+		neutral_evil_mean = 0.15
+		neutral_good_mean = 0.8
+
+		lawful_good_mean = 0.05
+		lawful_evil_mean = 0.1
+		lawful_neutral_mean = 0.075
+
+		chaotic_neutral_mean = 0.15
+		chaotic_evil_mean = 0.2
+		chaotic_good_mean = 0.1
+
+		chaotic_neutral_standard_deviation = 0.07
+		chaotic_good_standard_deviation = 0.05
+		chaotic_evil_standard_deviation = 0.1
+
+		neutral_good_standard_deviation = 0.05
+		neutral_evil_standard_deviation = 0.05
+		abs_neutral_standard_deviation = 0.05
+
+		lawful_good_standard_deviation = 0.025
+		lawful_evil_standard_deviation = 0.025
+		lawful_neutral_standard_deviation = 0.025
+
+	} else { // when there is a cheat
+		abs_neutral_mean = 0.5
+		neutral_evil_mean = 0.75
+		neutral_good_mean = 0.25
+
+		lawful_good_mean = 0.1
+		lawful_evil_mean = 0.6
+		lawful_neutral_mean = 0.5
+
+		chaotic_neutral_mean = 0.5
+		chaotic_evil_mean = 0.85
+		chaotic_good_mean = 0.25
+
+		chaotic_neutral_standard_deviation = 0.2
+		chaotic_good_standard_deviation = 0.2
+		chaotic_evil_standard_deviation = 0.15
+
+		neutral_good_standard_deviation = 0.15
+		neutral_evil_standard_deviation = 0.15
+		abs_neutral_standard_deviation = 0.15
+
+		lawful_good_standard_deviation = 0.1
+		lawful_evil_standard_deviation = 0.1
+		lawful_neutral_standard_deviation = 0.1
+
+	}
+	for _, agent := range mi.Server.GetTeam(mi.GetID()).Agents {
+		audit_percentage := 0.0
+
+		// we need to genereate a probability for each agent
+		if mi.evilness == 2 { // if agent has neutral evilness, use neutral mean
+			if mi.chaoticness == 1 { // if lawful neutral
+
+				audit_percentage = (rand.NormFloat64() * float64(lawful_neutral_standard_deviation)) + float64(lawful_neutral_mean)
+
+			} else if mi.chaoticness == 2 { // abs neutral
+				audit_percentage = (rand.NormFloat64() * float64(abs_neutral_standard_deviation)) + float64(abs_neutral_mean)
+
+			} else if mi.chaoticness == 3 { //chaotic neutral
+				audit_percentage = (rand.NormFloat64() * float64(chaotic_neutral_standard_deviation)) + float64(chaotic_neutral_mean)
+
+			}
+
+		} else if mi.evilness == 1 { // if agent is good
+			if mi.chaoticness == 1 { // if lawful good
+
+				audit_percentage = (rand.NormFloat64() * float64(lawful_good_standard_deviation)) + float64(lawful_good_mean)
+
+			} else if mi.chaoticness == 2 { // neutral good
+				audit_percentage = (rand.NormFloat64() * float64(neutral_good_standard_deviation)) + float64(neutral_good_mean)
+
+			} else if mi.chaoticness == 3 { //chaotic good
+				audit_percentage = (rand.NormFloat64() * float64(chaotic_good_standard_deviation)) + float64(chaotic_good_mean)
+
+			}
+
+		} else if mi.evilness == 3 { // if agent is evil
+			if mi.chaoticness == 1 { // if lawful evil
+
+				audit_percentage = (rand.NormFloat64() * float64(lawful_evil_standard_deviation)) + float64(lawful_evil_mean)
+
+			} else if mi.chaoticness == 2 { // neutral evil
+				audit_percentage = (rand.NormFloat64() * float64(neutral_evil_standard_deviation)) + float64(neutral_evil_mean)
+
+			} else if mi.chaoticness == 3 { //chaotic evil
+				audit_percentage = (rand.NormFloat64() * float64(chaotic_evil_standard_deviation)) + float64(chaotic_evil_mean)
+
+			}
+		}
+		// we apply affinity, it will shift the mean(just the percentage) based on the affinity of that agnet
+		affinity_modifier := 0.05
+		ignore_thresh := 10
+		if mi.affinity[agent] > ignore_thresh {
+			audit_percentage -= math.Sqrt(float64(mi.affinity[agent]-10)) * affinity_modifier
+		} else if mi.affinity[agent] < -ignore_thresh {
+			audit_percentage -= math.Sqrt(float64(mi.affinity[agent]+10)) * affinity_modifier
+		}
+
+		Apply_mood(audit_percentage, abs_neutral_mean)
+		if rand.Float64() <= audit_percentage {
+			auditmap[agent] = 1
+		} else {
+			auditmap[agent] = 0
+		}
+
+	}
+
 	// TODO: implement audit strategy
-	return true
+	return auditmap
 }
 func (mi *MI_256_v1) DecideVote() bool {
+	/*vote happens at many occasions:
+
+	when approving to rank up
+	when approving withdrawal
+	voting for a leader(maybe)
+	voting for a AoA
+	voting for audition
+
+	*/
 	// TODO: implement vote strategy
+
 	return true
 }
 
@@ -384,6 +562,7 @@ func (mi *MI_256_v1) Initialize_opninions() {
 	mi.affinity = make(map[uuid.UUID]int)
 	for _, agent := range mi.Server.UpdateAndGetAgentExposedInfo() {
 		mi.affinity[agent.AgentUUID] = 0
+		mi.affinityChange[agent.AgentUUID] = 0
 	}
 	// needs to change
 	mi.mood = 0
@@ -394,6 +573,12 @@ func (mi *MI_256_v1) startTurnUpdate() {
 	// this function updates the agent states every start of turn, refreshing states if needed
 	mi.UpdateMoodTurnStart()
 	mi.haveIlied = false
+	for key := range mi.affinityChange {
+		mi.affinityChange[key] = 0
+	}
+	mi.isThereCheatContribution = false
+	mi.isThereCheatWithdrawal = false
+
 }
 
 /*
@@ -455,33 +640,72 @@ func (mi *MI_256_v1) UpdateAffinityAfterContribute() {
 
 	// contructing a socially fair structure:
 	// simple, meeting the AoA Expected Contribution==fair
+
+	// if we do not know their expected contributions however,  we could measure the average of all the declared contributions, and use that as agent expected.
+
+	sum := 0
+	numAgent := 0
 	for _, agent := range mi.Server.GetTeam(mi.GetID()).Agents {
-		agentExpected := mi.teamAgentsExpectedContribution[agent]
-		agentDeclared := mi.teamAgentsDeclaredContribution[agent]
+		sum += mi.teamAgentsDeclaredContribution[agent]
+		numAgent += 1
+
+	}
+	agentExpected := sum / numAgent
+	for _, agent := range mi.Server.GetTeam(mi.GetID()).Agents {
+
+		if mi.isAoAContributionFixed {
+			agentExpected = mi.teamAgentsDeclaredContribution[agent]
+		}
 		affinityChange := 0.0
+		agentDeclared := mi.teamAgentsDeclaredContribution[agent]
 		// fairness, if they contributed more or less than expected, less take note, more don't do anything
 		fairnessThresh := 0.5
 		if agentDeclared < agentExpected {
 			affinityChange -= float64(agentExpected-agentDeclared) * (fairnessThresh)
 		}
-		// satisfaction ( not too important as if they miss they will cheat anyways so you can't tell)
-		satisfactionThresh := 0.5
-		if agentDeclared < agentExpected {
-			amount_less := float64(agentExpected - agentDeclared)
-			affinityChange -= (satisfactionThresh) * float64(mi.evilness-1) * math.Sqrt(amount_less)
-		} else {
-			amount_more := -float64(agentExpected - agentDeclared)
-			affinityChange += (satisfactionThresh) * float64(3-(mi.evilness-1)) * math.Sqrt(amount_more)
+
+		if !mi.isThereCheatContribution {
+
+			// satisfaction if there are no cheats, so we value people highly
+			satisfactionThresh := 0.5
+			if agentDeclared < agentExpected {
+				amount_less := float64(agentExpected - agentDeclared)
+				affinityChange -= (satisfactionThresh) * float64(mi.evilness-1) * math.Sqrt(amount_less)
+			} else {
+				amount_more := -float64(agentExpected - agentDeclared)
+				affinityChange += (satisfactionThresh) * float64(3-(mi.evilness-1)) * math.Sqrt(amount_more)
+			}
+		} else { // if there are cheats happening, we would like to be more spectical
+			// good people would still think they are good, but with less modifier, neutral people hold thought, and evil would decrease if they say contributed more (suspision)
+			satisfactionThresh := 0.5
+			if agentDeclared < agentExpected {
+				//if you contribute less than expected, no change
+				amount_less := float64(agentExpected - agentDeclared)
+				affinityChange -= (satisfactionThresh) * float64(mi.evilness-1) * math.Sqrt(amount_less)
+			} else {
+				// if you donate more or equal to, we suspect you
+				amount_more := -float64(agentExpected - agentDeclared)
+				affinityChange += (satisfactionThresh) * float64(-(mi.evilness - 2)) * math.Sqrt(amount_more)
+			}
 		}
+
 		mi.affinity[agent] += int(affinityChange)
+
+		mi.affinityChange[agent] += int(affinityChange)
 
 	}
 
 }
 func (mi *MI_256_v1) UpdateAffinityAfterWithdraw() {
 	//similar to contribution, there withdrawing same amount is fair, and satisfaction comes into play
+	// if there is no set distribution, we would assume the avarage amount in the pot would be a fair number
+	agentExpected := int(mi.last_common_pool / (len(mi.Server.GetTeam(mi.GetID()).Agents) + 1))
+
 	for _, agent := range mi.Server.GetTeam(mi.GetID()).Agents {
-		agentExpected := mi.teamAgentsExpectedWithdraw[agent]
+		if mi.isAoAWithdrawalFixed {
+			agentExpected = mi.teamAgentsExpectedWithdraw[agent]
+		}
+
 		agentDeclared := mi.teamAgentsDeclaredWithdraw[agent]
 		affinityChange := 0.0
 		// fairness, if they withdrawed more or less than expected, less take note, more don't do anything
@@ -490,15 +714,31 @@ func (mi *MI_256_v1) UpdateAffinityAfterWithdraw() {
 			affinityChange += float64(agentExpected-agentDeclared) * (fairnessThresh)
 		}
 		// satisfaction ( not too important as if they miss they will cheat anyways so you can't tell)
-		satisfactionThresh := 0.5
-		if agentDeclared < agentExpected {
-			amount_less := float64(agentExpected - agentDeclared)
-			affinityChange += (satisfactionThresh) * float64(mi.evilness-1) * math.Sqrt(amount_less)
+
+		if !mi.isThereCheatWithdrawal {
+
+			satisfactionThresh := 0.5
+			if agentDeclared < agentExpected {
+				amount_less := float64(agentExpected - agentDeclared)
+				affinityChange += (satisfactionThresh) * float64(mi.evilness-1) * math.Sqrt(amount_less)
+			} else {
+				amount_more := -float64(agentExpected - agentDeclared)
+				affinityChange -= (satisfactionThresh) * float64(3-(mi.evilness-1)) * math.Sqrt(amount_more)
+			}
 		} else {
-			amount_more := -float64(agentExpected - agentDeclared)
-			affinityChange -= (satisfactionThresh) * float64(3-(mi.evilness-1)) * math.Sqrt(amount_more)
+			// if there are cheat, then we would be more critical on whoever says they took equal or less
+			satisfactionThresh := 0.5
+			if agentDeclared < agentExpected {
+				amount_less := float64(agentExpected - agentDeclared)
+				affinityChange += (satisfactionThresh) * float64(-(mi.evilness - 2)) * math.Sqrt(amount_less)
+			} else {
+				amount_more := -float64(agentExpected - agentDeclared)
+				affinityChange -= (satisfactionThresh) * float64(3-(mi.evilness-1)) * math.Sqrt(amount_more)
+			}
+
 		}
 		mi.affinity[agent] += int(affinityChange)
+		mi.affinityChange[agent] += int(affinityChange)
 
 	}
 
@@ -515,7 +755,7 @@ func (mi *MI_256_v1) UpdateAffinityAfterVote() {
 			}
 			voteAgainstAffinityChange := 3
 			voteForAffinityChange := 1
-			if mi.lastVotes[agent] == true {
+			if mi.lastVotes[agent] {
 				//affninity changes based on the chaoticness, the more chaotic, the more you cannot stand the person
 				affinityChange -= voteAgainstAffinityChange * mi.chaoticness
 			} else {
@@ -534,7 +774,7 @@ func (mi *MI_256_v1) UpdateAffinityAfterVote() {
 
 			voteAgainstAffinityChange := 2
 			voteForAffinityChange := 1
-			if mi.lastVotes[agent] == true {
+			if mi.lastVotes[agent] {
 				//affninity changes based on the chaoticness, the more chaotic, the more you cannot stand the person
 				affinityChange += voteForAffinityChange * mi.chaoticness
 			} else {
@@ -546,7 +786,7 @@ func (mi *MI_256_v1) UpdateAffinityAfterVote() {
 		for _, agent := range mi.Server.GetTeam(mi.GetID()).Agents {
 			affinityChange := 0
 			if mi.lastAuditStarter == agent {
-				if mi.isThereCheatThisRound {
+				if mi.isThereCheatWithdrawal || mi.isThereCheatContribution {
 					affinityChange -= 2
 				} else {
 					affinityChange -= 3 // you would get more mad if there seems to be no cheating this round
@@ -555,7 +795,7 @@ func (mi *MI_256_v1) UpdateAffinityAfterVote() {
 			}
 			voteAgainstAffinityChange := 0
 			voteForAffinityChange := 0
-			if mi.isThereCheatThisRound {
+			if mi.isThereCheatWithdrawal || mi.isThereCheatContribution {
 				voteAgainstAffinityChange = 1
 				voteForAffinityChange = 2
 			} else {
@@ -563,7 +803,7 @@ func (mi *MI_256_v1) UpdateAffinityAfterVote() {
 				voteForAffinityChange = 3
 			}
 
-			if mi.lastVotes[agent] == true {
+			if mi.lastVotes[agent] {
 				//affninity changes based on the chaoticness, the more chaotic, the more you cannot stand the person
 				affinityChange -= voteForAffinityChange * mi.chaoticness
 			} else {
