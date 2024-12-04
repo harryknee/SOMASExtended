@@ -3,8 +3,11 @@ package agents
 /* Contains functions relevant to agent functionality when the AoA is Team1AoA */
 
 import (
-	"github.com/google/uuid"
 	"log"
+	"math"
+	"sort"
+
+	"github.com/google/uuid"
 
 	common "github.com/ADimoska/SOMASExtended/common"
 )
@@ -69,7 +72,45 @@ func (mi *ExtendedAgent) team1_GatherRankBoundaryProposals() {
 * Generate the candidates based off the proposals expressed by the agents
  */
 func (mi *ExtendedAgent) team1_GenerateRankBoundaryCandidates() [3][5]int {
-	return [3][5]int{{1, 2, 3, 4, 5}, {1, 2, 3, 4, 5}, {1, 2, 3, 4, 5}}
+    // This function will take the values stored in team1RankBoundaryOpinions
+    // (which should have been collected just before this). 
+    if mi.team1RankBoundaryOpinions == nil {
+        log.Fatal("Tried generating candidates without asking for agent proposals! (nil pointer)")
+        return [3][5]int{}
+    }
+
+    // Transpose the proposals matrix - This converts arrays of proposals of
+    // each agent to arrays of proposals for each rank
+    rows := len(mi.team1RankBoundaryOpinions)
+    cols := 5 // for 5 ranks
+
+    // pre-allocate
+    boundaries := [5][]int{}
+    for i := range boundaries {
+        boundaries[i] = make([]int, rows)
+    }
+
+    // fill
+    for i := 0; i < rows; i++ {
+        for j := 0; j < cols; j++ {
+            boundaries[j][i] = mi.team1RankBoundaryOpinions[i][j]
+        }
+    }
+
+    lower_candidate := [5]int{}  // lower quartile of each bound
+    avg_candidate := [5]int{}  // median of each bound
+    upper_candidate := [5]int{}  // upper quartile of each bound
+
+    // Go through each rank boundary, and add it to the respective candidate
+    for pos, b := range boundaries {
+        q1, q2, q3 := calculateQuartiles(b)
+        lower_candidate[pos] = q1
+        avg_candidate[pos] = q2
+        upper_candidate[pos] = q3
+    }
+
+    cands := [3][5]int{lower_candidate, avg_candidate, upper_candidate}
+    return cands
 }
 
 /**
@@ -78,6 +119,49 @@ func (mi *ExtendedAgent) team1_GenerateRankBoundaryCandidates() [3][5]int {
 func (mi *ExtendedAgent) team1_VoteOnRankBoundaries(cands [3][5]int) [5]int {
 	// Default behaviour just returns the first candidate
 	return cands[0]
+}
+
+/**
+* Calculate the median, upper and lower quartiles for a range of data. This is
+* used for generating candidates based on individual rank boundaries provided
+* by agents. Calculations are done based on floats but results are rounded to
+* integers before being returned. 
+*/
+func calculateQuartiles(values []int) (q1, q2, q3 int) {
+    n := len(values)
+    sort.Ints(values)
+
+    // Calculate each quartile
+    q1 = calculateMedian(values[:n/2])  // lower quartile
+    q2 = calculateMedian(values)  // median
+
+    /* Upper quartile needs a little more thought, since you need to account
+    for the case where the size is even. This is not a problem for the lower
+    quartile because n/2 gets floored down if it is a float. But in this case
+    we need to think whether we consider the median or not. */
+
+    if n % 2 == 0 {
+        q3 = calculateMedian(values[n/2:])  
+    } else {
+        q3 = calculateMedian(values[n/2 + 1:])  
+    }
+
+    return
+}
+
+/**
+* Calculate the median of a set of values. Returns an integer, rounding to the
+* nearest whole number (not truncation)
+*/
+func calculateMedian(sortedValues []int) int {
+    n := len(sortedValues)
+    var median float64 = 0.0
+    if n % 2 == 0 {
+        median = float64(sortedValues[n/2 - 1] + sortedValues[n/2 + 1]) / 2.0
+    } else {
+        median = float64(sortedValues[n/2])
+    }
+    return int(math.Round(median))
 }
 
 /**
