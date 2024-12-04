@@ -21,9 +21,9 @@ type IArticlesOfAssociation interface {
 	GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID
 
 	// Team 4 AoA Specific Functions
-	AoA4SetRankUp(map[uuid.UUID]map[uuid.UUID]int)
-	AoA4RunProposedWithdrawalVote(map[uuid.UUID]int, map[uuid.UUID]map[uuid.UUID]int)
-	AoA4HandlePunishmentVote(map[uuid.UUID]map[int]int) int
+	Team4_SetRankUp(map[uuid.UUID]map[uuid.UUID]int)
+	Team4_RunProposedWithdrawalVote(map[uuid.UUID]int, map[uuid.UUID]map[uuid.UUID]int)
+	Team4_HandlePunishmentVote(map[uuid.UUID]map[int]int) int
 	RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent)
 }
 

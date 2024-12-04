@@ -43,10 +43,10 @@ type ExtendedAgent struct {
 	TrueSomasTeamID int // your true team id! e.g. team 4 -> 4. Override this in your agent constructor
 
 	// Team 4 AoA
-	ProposedWithdrawalVote map[uuid.UUID]int
-	RankUpVote             map[uuid.UUID]int
-	Confession             bool
-	PunishmentVoteMap      map[int]int
+	Team4_ProposedWithdrawalVote map[uuid.UUID]int
+	Team4_RankUpVote             map[uuid.UUID]int
+	Team4_Confession             bool
+	Team4_PunishmentVoteMap      map[int]int
 }
 
 type AgentConfig struct {
@@ -56,16 +56,16 @@ type AgentConfig struct {
 
 func GetBaseAgents(funcs agent.IExposedServerFunctions[common.IExtendedAgent], configParam AgentConfig) *ExtendedAgent {
 	return &ExtendedAgent{
-		BaseAgent:              agent.CreateBaseAgent(funcs),
-		Server:                 funcs.(common.IServer), // Type assert the server functions to IServer interface
-		Score:                  configParam.InitScore,
-		VerboseLevel:           configParam.VerboseLevel,
-		AoARanking:             []int{0},
-		TeamRanking:            []uuid.UUID{},
-		ProposedWithdrawalVote: make(map[uuid.UUID]int),
-		RankUpVote:             make(map[uuid.UUID]int),
-		Confession:             false,
-		PunishmentVoteMap:      make(map[int]int),
+		BaseAgent:                    agent.CreateBaseAgent(funcs),
+		Server:                       funcs.(common.IServer), // Type assert the server functions to IServer interface
+		Score:                        configParam.InitScore,
+		VerboseLevel:                 configParam.VerboseLevel,
+		AoARanking:                   []int{4, 1, 2, 3, 5, 6},
+		TeamRanking:                  []uuid.UUID{},
+		Team4_ProposedWithdrawalVote: make(map[uuid.UUID]int),
+		Team4_RankUpVote:             make(map[uuid.UUID]int),
+		Team4_Confession:             false,
+		Team4_PunishmentVoteMap:      make(map[int]int),
 	}
 }
 
@@ -383,15 +383,15 @@ func (mi *ExtendedAgent) CreateWithdrawalMessage(statedAmount int) *common.Withd
 	}
 }
 
-func (mi *ExtendedAgent) CreateProposedWithdrawalMessage(statedAmount int) *common.ProposedWithdrawalMessage {
-	return &common.ProposedWithdrawalMessage{
+func (mi *ExtendedAgent) Team4_CreateProposedWithdrawalMessage(statedAmount int) *common.Team4_ProposedWithdrawalMessage {
+	return &common.Team4_ProposedWithdrawalMessage{
 		BaseMessage:  mi.CreateBaseMessage(),
 		StatedAmount: statedAmount,
 	}
 }
 
-func (mi *ExtendedAgent) CreateConfessionMessage(confession bool) *common.ConfessionMessage {
-	return &common.ConfessionMessage{
+func (mi *ExtendedAgent) Team4_CreateConfessionMessage(confession bool) *common.Team4_ConfessionMessage {
+	return &common.Team4_ConfessionMessage{
 		BaseMessage: mi.CreateBaseMessage(),
 		Confession:  confession,
 	}
@@ -565,27 +565,27 @@ func (mi *ExtendedAgent) RecordAgentStatus(instance common.IExtendedAgent) gameR
 
 // ----------------------- Team 4 AoA Functions -----------------------
 
-func (mi *ExtendedAgent) GetRankUpVote() map[uuid.UUID]int {
-	return mi.RankUpVote
+func (mi *ExtendedAgent) Team4_GetRankUpVote() map[uuid.UUID]int {
+	return mi.Team4_RankUpVote
 }
 
 // Change this for approval vote in your agent
-func (mi *ExtendedAgent) SetRankUpVote(Preferences map[uuid.UUID]int) {
-	mi.RankUpVote = Preferences
+func (mi *ExtendedAgent) Team4_SetRankUpVote(Preferences map[uuid.UUID]int) {
+	mi.Team4_RankUpVote = Preferences
 }
 
-func (mi *ExtendedAgent) GetConfession() bool {
-	return mi.Confession
+func (mi *ExtendedAgent) Team4_GetConfession() bool {
+	return mi.Team4_Confession
 }
 
-func (mi *ExtendedAgent) StateConfessionToTeam() {
+func (mi *ExtendedAgent) Team4_StateConfessionToTeam() {
 	// Broadcast contribution to team
-	confession := mi.GetConfession()
-	confessionMsg := mi.CreateConfessionMessage(confession)
+	confession := mi.Team4_GetConfession()
+	confessionMsg := mi.Team4_CreateConfessionMessage(confession)
 	mi.BroadcastSyncMessageToTeam(confessionMsg)
 }
 
-func (mi *ExtendedAgent) HandleConfessionMessage(msg *common.ConfessionMessage) {
+func (mi *ExtendedAgent) Team4_HandleConfessionMessage(msg *common.Team4_ConfessionMessage) {
 	if mi.VerboseLevel > 8 {
 		if msg.Confession {
 			log.Printf("Agent %s received confession notification from %s: I'm really sorry :(",
@@ -598,36 +598,36 @@ func (mi *ExtendedAgent) HandleConfessionMessage(msg *common.ConfessionMessage) 
 	// Team's agent should implement logic to store or process the reported proposed withdrawal amount as desired
 }
 
-func (mi *ExtendedAgent) SetConfession(Confession bool) {
-	mi.Confession = Confession
+func (mi *ExtendedAgent) Team4_SetConfession(Confession bool) {
+	mi.Team4_Confession = Confession
 }
 
 // Get agents vote map for
-func (mi *ExtendedAgent) GetProposedWithdrawalVote() map[uuid.UUID]int {
-	return mi.ProposedWithdrawalVote
+func (mi *ExtendedAgent) Team4_GetProposedWithdrawalVote() map[uuid.UUID]int {
+	return mi.Team4_ProposedWithdrawalVote
 }
 
-func (mi *ExtendedAgent) SetProposedWithdrawalVote(Preferences map[uuid.UUID]int) {
-	mi.ProposedWithdrawalVote = Preferences
+func (mi *ExtendedAgent) Team4_SetProposedWithdrawalVote(Preferences map[uuid.UUID]int) {
+	mi.Team4_ProposedWithdrawalVote = Preferences
 }
 
-func (mi *ExtendedAgent) GetProposedWithdrawal(instance common.IExtendedAgent) int {
+func (mi *ExtendedAgent) Team4_GetProposedWithdrawal(instance common.IExtendedAgent) int {
 	// first check if the agent has a team
 	if !mi.HasTeam() {
 		return 0
 	}
 	// Currently, assume stated withdrawal matches actual withdrawal
-	return instance.ProposeWithdrawal()
+	return instance.Team4_ProposeWithdrawal()
 }
 
-func (mi *ExtendedAgent) StateProposalToTeam() {
+func (mi *ExtendedAgent) Team4_StateProposalToTeam() {
 	// Broadcast contribution to team
-	proposedWithdrawal := mi.GetProposedWithdrawal(mi)
-	proposalMsg := mi.CreateProposedWithdrawalMessage(proposedWithdrawal)
+	proposedWithdrawal := mi.Team4_GetProposedWithdrawal(mi)
+	proposalMsg := mi.Team4_CreateProposedWithdrawalMessage(proposedWithdrawal)
 	mi.BroadcastSyncMessageToTeam(proposalMsg)
 }
 
-func (mi *ExtendedAgent) ProposeWithdrawal() int {
+func (mi *ExtendedAgent) Team4_ProposeWithdrawal() int {
 	// first check if the agent has a team
 	if !mi.HasTeam() {
 		return 0
@@ -648,7 +648,7 @@ func (mi *ExtendedAgent) ProposeWithdrawal() int {
 	}
 }
 
-func (mi *ExtendedAgent) HandleProposedWithdrawalMessage(msg *common.ProposedWithdrawalMessage) {
+func (mi *ExtendedAgent) Team4_HandleProposedWithdrawalMessage(msg *common.Team4_ProposedWithdrawalMessage) {
 	if mi.VerboseLevel > 8 {
 		log.Printf("Agent %s received proposed withdrawal notification from %s: amount=%d\n",
 			mi.GetID(), msg.GetSender(), msg.StatedAmount)
@@ -656,8 +656,8 @@ func (mi *ExtendedAgent) HandleProposedWithdrawalMessage(msg *common.ProposedWit
 	// Team's agent should implement logic to store or process the reported proposed withdrawal amount as desired
 }
 
-func (mi *ExtendedAgent) GetPunishmentVoteMap() map[int]int {
-	return mi.PunishmentVoteMap
+func (mi *ExtendedAgent) Team4_GetPunishmentVoteMap() map[int]int {
+	return mi.Team4_PunishmentVoteMap
 
 }
 

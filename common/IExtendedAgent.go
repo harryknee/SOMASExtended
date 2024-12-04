@@ -68,21 +68,21 @@ type IExtendedAgent interface {
 	GetTrueSomasTeamID() int
 
 	// Team4 AoA Functions
-	GetRankUpVote() map[uuid.UUID]int
-	GetConfession() bool
-	GetProposedWithdrawalVote() map[uuid.UUID]int
+	Team4_GetRankUpVote() map[uuid.UUID]int
+	Team4_GetConfession() bool
+	Team4_GetProposedWithdrawalVote() map[uuid.UUID]int
 
-	GetProposedWithdrawal(instance IExtendedAgent) int
-	ProposeWithdrawal() int
+	Team4_GetProposedWithdrawal(instance IExtendedAgent) int
+	Team4_ProposeWithdrawal() int
 
-	StateProposalToTeam()
-	CreateProposedWithdrawalMessage(statedAmount int) *ProposedWithdrawalMessage
-	HandleProposedWithdrawalMessage(msg *ProposedWithdrawalMessage)
+	Team4_StateProposalToTeam()
+	Team4_CreateProposedWithdrawalMessage(statedAmount int) *Team4_ProposedWithdrawalMessage
+	Team4_HandleProposedWithdrawalMessage(msg *Team4_ProposedWithdrawalMessage)
 
-	StateConfessionToTeam()
-	CreateConfessionMessage(confession bool) *ConfessionMessage
-	HandleConfessionMessage(msg *ConfessionMessage)
-	GetPunishmentVoteMap() map[int]int
+	Team4_StateConfessionToTeam()
+	Team4_CreateConfessionMessage(confession bool) *Team4_ConfessionMessage
+	Team4_HandleConfessionMessage(msg *Team4_ConfessionMessage)
+	Team4_GetPunishmentVoteMap() map[int]int
 	// Data Recording
 	RecordAgentStatus(instance IExtendedAgent) gameRecorder.AgentRecord
 

@@ -97,10 +97,10 @@ func CreateFixedAoA(duration int) IArticlesOfAssociation {
 }
 
 // Do nothing
-func (t *FixedAoA) AoA4SetRankUp(rankUpVoteMap map[uuid.UUID]map[uuid.UUID]int) {
+func (t *FixedAoA) Team4_SetRankUp(rankUpVoteMap map[uuid.UUID]map[uuid.UUID]int) {
 }
-func (t *FixedAoA) AoA4RunProposedWithdrawalVote(map[uuid.UUID]int, map[uuid.UUID]map[uuid.UUID]int) {
+func (t *FixedAoA) Team4_RunProposedWithdrawalVote(map[uuid.UUID]int, map[uuid.UUID]map[uuid.UUID]int) {
 }
-func (t *FixedAoA) AoA4HandlePunishmentVote(map[uuid.UUID]map[int]int) int {
+func (t *FixedAoA) Team4_HandlePunishmentVote(map[uuid.UUID]map[int]int) int {
 	return 0
 }

@@ -82,7 +82,7 @@ func (mi *MI_256_v1) DecidePunishment() int {
 }
 
 // Need to do something about agents own ID in here
-func (mi *MI_256_v1) GetRankUpVote() map[uuid.UUID]int {
+func (mi *MI_256_v1) Team4_GetRankUpVote() map[uuid.UUID]int {
 	log.Printf("Called overriden GetRankUpVote()")
 	agentsInTeam := mi.Server.GetAgentsInTeam(mi.TeamID)
 	rankUpVote := make(map[uuid.UUID]int)
@@ -92,11 +92,11 @@ func (mi *MI_256_v1) GetRankUpVote() map[uuid.UUID]int {
 	}
 
 	fmt.Println(rankUpVote)
-	mi.SetConfession(true)
+	mi.Team4_SetConfession(true)
 	return rankUpVote
 }
 
-func (mi *MI_256_v1) GetProposedWithdrawalVote() map[uuid.UUID]int {
+func (mi *MI_256_v1) Team4_GetProposedWithdrawalVote() map[uuid.UUID]int {
 	log.Printf("Called overriden GetProposedWithdrawalVote()")
 	agentsInTeam := mi.Server.GetAgentsInTeam(mi.TeamID)
 	proposedWithdrawals := make(map[uuid.UUID]int)
@@ -125,7 +125,7 @@ func (mi *MI_256_v1) GetWithdrawalAuditVote() common.Vote {
 	return common.CreateVote(1, mi.GetID(), firstAgentID)
 }
 
-func (mi *MI_256_v1) GetPunishmentVoteMap() map[int]int {
+func (mi *MI_256_v1) Team4_GetPunishmentVoteMap() map[int]int {
 	punishmentVoteMap := make(map[int]int)
 
 	for punishment := 0; punishment <= 4; punishment++ {

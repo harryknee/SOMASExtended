@@ -150,7 +150,7 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 }
 
 func (cs *EnvironmentServer) RunTurnTeam4(team *common.Team) {
-	log.Println("\nRunning turn for team ", team.TeamID)
+	log.Println("\nRunning AoA 4 Variant turn for team ", team.TeamID)
 	// Sum of contributions from all agents in the team for this turn
 	agentContributionsTotal := 0
 	for _, agentID := range team.Agents {
@@ -177,10 +177,10 @@ func (cs *EnvironmentServer) RunTurnTeam4(team *common.Team) {
 	rankUpVoteMap := make(map[uuid.UUID]map[uuid.UUID]int)
 	for _, agentID := range team.Agents {
 		agent := cs.GetAgentMap()[agentID]
-		agentRankMap := agent.GetRankUpVote()
+		agentRankMap := agent.Team4_GetRankUpVote()
 		rankUpVoteMap[agentID] = agentRankMap
 	}
-	team.TeamAoA.AoA4SetRankUp(rankUpVoteMap)
+	team.TeamAoA.Team4_SetRankUp(rankUpVoteMap)
 
 	// ***************
 
@@ -210,9 +210,9 @@ func (cs *EnvironmentServer) RunTurnTeam4(team *common.Team) {
 	proposedWithdrawalMap := make(map[uuid.UUID]int)
 	for _, agentID := range team.Agents {
 		agent := cs.GetAgentMap()[agentID]
-		agentStatedWithdrawal := agent.GetProposedWithdrawal(agent)
+		agentStatedWithdrawal := agent.Team4_GetProposedWithdrawal(agent)
 		proposedWithdrawalMap[agentID] = agentStatedWithdrawal
-		agent.StateProposalToTeam()
+		agent.Team4_StateProposalToTeam()
 
 	}
 	withdrawalVoteMap := make(map[uuid.UUID]map[uuid.UUID]int)
@@ -220,10 +220,10 @@ func (cs *EnvironmentServer) RunTurnTeam4(team *common.Team) {
 	for _, agentID := range team.Agents {
 		agent := cs.GetAgentMap()[agentID]
 		// Get Map of AgentId and 1 or 0 to proposed withdrawal (for each agent)
-		agentVote := agent.GetProposedWithdrawalVote()
+		agentVote := agent.Team4_GetProposedWithdrawalVote()
 		withdrawalVoteMap[agentID] = agentVote
 	}
-	team.TeamAoA.AoA4RunProposedWithdrawalVote(proposedWithdrawalMap, withdrawalVoteMap)
+	team.TeamAoA.Team4_RunProposedWithdrawalVote(proposedWithdrawalMap, withdrawalVoteMap)
 	// ***************
 
 	orderedAgents := team.TeamAoA.GetWithdrawalOrder(team.Agents)
@@ -279,16 +279,16 @@ func (cs *EnvironmentServer) RunTurnTeam4(team *common.Team) {
 	if agentToAudit := team.TeamAoA.GetVoteResult(withdrawalAuditVotes); agentToAudit != uuid.Nil {
 		agent := cs.GetAgentMap()[agentToAudit]
 		// agentConfession := agent.GetConfession()
-		agent.StateConfessionToTeam()
+		agent.Team4_StateConfessionToTeam()
 		agentScore := agent.GetTrueScore()
 		punishmentVoteMap := make(map[uuid.UUID]map[int]int)
 		for _, agentID := range team.Agents {
 			agent := cs.GetAgentMap()[agentID]
-			punishmentVote := agent.GetPunishmentVoteMap()
+			punishmentVote := agent.Team4_GetPunishmentVoteMap()
 			punishmentVoteMap[agentID] = punishmentVote
 		}
 
-		punishmentResult := team.TeamAoA.AoA4HandlePunishmentVote(punishmentVoteMap) * agentScore / 100
+		punishmentResult := team.TeamAoA.Team4_HandlePunishmentVote(punishmentVoteMap) * agentScore / 100
 
 		log.Printf("Punishment Result for Agent %v: %d (Agent Score: %d)\n", agent.GetID(), punishmentResult, agentScore)
 
@@ -334,7 +334,7 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 	for _, team := range cs.Teams {
 		teamAoA := reflect.TypeOf(team.TeamAoA)
 		switch teamAoA {
-		case reflect.TypeOf(common.Team4AoA{}):
+		case reflect.TypeOf(&common.Team4AoA{}):
 			cs.RunTurnTeam4(team)
 		default:
 			cs.RunTurnDefault(team)
@@ -554,7 +554,7 @@ func (cs *EnvironmentServer) allocateAoAs() {
 			case 6:
 				team.TeamAoA = common.CreateFixedAoA(1)
 			default:
-				team.TeamAoA = common.CreateFixedAoA(1)
+				team.TeamAoA = common.CreateTeam4AoA(team)
 			}
 
 			cs.Teams[team.TeamID] = team

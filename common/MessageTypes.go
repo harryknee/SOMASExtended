@@ -40,13 +40,13 @@ type AgentOpinionResponseMessage struct {
 	AgentOpinion int
 }
 
-type ProposedWithdrawalMessage struct {
+type Team4_ProposedWithdrawalMessage struct {
 	message.BaseMessage
 	StatedAmount   int
 	ExpectedAmount int
 }
 
-type ConfessionMessage struct {
+type Team4_ConfessionMessage struct {
 	message.BaseMessage
 	Confession bool
 }
@@ -75,10 +75,10 @@ func (msg *AgentOpinionResponseMessage) InvokeMessageHandler(agent IExtendedAgen
 	agent.HandleAgentOpinionResponseMessage(msg)
 }
 
-func (msg *ProposedWithdrawalMessage) InvokeMessageHandler(agent IExtendedAgent) {
-	agent.HandleProposedWithdrawalMessage(msg)
+func (msg *Team4_ProposedWithdrawalMessage) InvokeMessageHandler(agent IExtendedAgent) {
+	agent.Team4_HandleProposedWithdrawalMessage(msg)
 }
 
-func (msg *ConfessionMessage) InvokeMessageHandler(agent IExtendedAgent) {
-	agent.HandleConfessionMessage(msg)
+func (msg *Team4_ConfessionMessage) InvokeMessageHandler(agent IExtendedAgent) {
+	agent.Team4_HandleConfessionMessage(msg)
 }

@@ -60,7 +60,7 @@ func (t *Team4AoA) GetAuditCost(commonPool int) int {
 }
 
 // Punishment Voting System
-func (t *Team4AoA) AoA4HandlePunishmentVote(punishmentVoteMap map[uuid.UUID]map[int]int) int {
+func (t *Team4AoA) Team4_HandlePunishmentVote(punishmentVoteMap map[uuid.UUID]map[int]int) int {
 	punishmentGrades := make(map[int][]int)
 
 	for _, votes := range punishmentVoteMap {
@@ -122,7 +122,7 @@ func calculateMedian(grades []int) int {
 	return grades[mid]
 }
 
-func (t *Team4AoA) AoA4SetRankUp(rankUpVoteMap map[uuid.UUID]map[uuid.UUID]int) {
+func (t *Team4AoA) Team4_SetRankUp(rankUpVoteMap map[uuid.UUID]map[uuid.UUID]int) {
 	approvalCounts := make(map[uuid.UUID]int)
 
 	for _, voteMap := range rankUpVoteMap {
@@ -236,7 +236,7 @@ func (t *Team4AoA) ResetAuditMap() {
 	t.AuditMap = make(map[uuid.UUID][]int)
 }
 
-func (t *Team4AoA) AoA4RunProposedWithdrawalVote(proposedWithdrawalMap map[uuid.UUID]int, withdrawalVoteMap map[uuid.UUID]map[uuid.UUID]int) {
+func (t *Team4AoA) Team4_RunProposedWithdrawalVote(proposedWithdrawalMap map[uuid.UUID]int, withdrawalVoteMap map[uuid.UUID]map[uuid.UUID]int) {
 	agentVoteWeightMap := make(map[uuid.UUID]int)
 
 	for voterID, voteMap := range withdrawalVoteMap {

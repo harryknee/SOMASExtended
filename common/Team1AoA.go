@@ -316,11 +316,11 @@ func CreateTeam1AoA(team *Team) IArticlesOfAssociation {
 }
 
 // Do nothing
-func (t *Team1AoA) AoA4SetRankUp(map[uuid.UUID]map[uuid.UUID]int) {
+func (t *Team1AoA) Team4_SetRankUp(map[uuid.UUID]map[uuid.UUID]int) {
 }
 
-func (t *Team1AoA) AoA4RunProposedWithdrawalVote(map[uuid.UUID]int, map[uuid.UUID]map[uuid.UUID]int) {
+func (t *Team1AoA) Team4_RunProposedWithdrawalVote(map[uuid.UUID]int, map[uuid.UUID]map[uuid.UUID]int) {
 }
-func (t *Team1AoA) AoA4HandlePunishmentVote(map[uuid.UUID]map[int]int) int {
+func (t *Team1AoA) Team4_HandlePunishmentVote(map[uuid.UUID]map[int]int) int {
 	return 0
 }
