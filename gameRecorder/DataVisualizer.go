@@ -762,10 +762,13 @@ func ExportToCSV(recorder *ServerDataRecorder, outputDir string) error {
 		return fmt.Errorf("failed to export team records: %v", err)
 	}
 
-	// Export common records (flattened from turn records)
+	// Export common records (flattened from turn records) - with filtering
 	var allCommonRecords []CommonRecord
 	for _, turn := range recorder.TurnRecords {
-		allCommonRecords = append(allCommonRecords, turn.CommonRecord)
+		// Only include records where either turn or iteration is non-zero
+		if turn.CommonRecord.TurnNumber != 0 || turn.CommonRecord.IterationNumber != 0 {
+			allCommonRecords = append(allCommonRecords, turn.CommonRecord)
+		}
 	}
 	if err := exportStructSliceToCSV(allCommonRecords, filepath.Join(outputDir, "common_records.csv")); err != nil {
 		return fmt.Errorf("failed to export common records: %v", err)

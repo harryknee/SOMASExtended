@@ -81,7 +81,7 @@ func main() {
 	serv.LogAgentStatus()
 	serv.LogTeamStatus()
 
-	// // record data
+	// record data
 	serv.DataRecorder.GamePlaybackSummary()
-	gameRecorder.ExportToCSV(serv.DataRecorder, "output")
+	gameRecorder.ExportToCSV(serv.DataRecorder, "visualization_output/csv_data")
 }

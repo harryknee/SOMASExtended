@@ -173,13 +173,14 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 
 	if cs.turn%cs.thresholdTurns == 0 && cs.turn > 1 {
 		cs.ApplyThreshold()
+	} else {
+		cs.thresholdAppliedInTurn = false // record data
 	}
 
-	cs.teamsMutex.Lock()
-
-	// record data
-	cs.RecordTurnInfo()
-	cs.teamsMutex.Unlock()
+	// do not record if the turn number is 0
+	if cs.turn > 0 {
+		cs.RecordTurnInfo()
+	}
 }
 
 func (cs *EnvironmentServer) RunStartOfIteration(iteration int) {
@@ -486,6 +487,7 @@ func (cs *EnvironmentServer) killAgentBelowThreshold(agentID uuid.UUID) int {
 	agent := cs.GetAgentMap()[agentID]
 	score := agent.GetTrueScore()
 	if score < cs.roundScoreThreshold {
+		agent.SetTrueScore(0)
 		cs.killAgent(agentID)
 	}
 	return score
@@ -672,26 +674,17 @@ func (cs *EnvironmentServer) ResetAgents() {
 }
 
 func (cs *EnvironmentServer) ApplyThreshold() {
+	cs.thresholdAppliedInTurn = true
 	for _, team := range cs.Teams {
 		team.SetCommonPool(0)
-		for _, agentID := range team.Agents {
-			if !cs.IsAgentDead(agentID) {
-				cs.killAgentBelowThreshold(agentID)
-			}
-			if agent := cs.GetAgentMap()[agentID]; agent != nil {
-				agent.SetTrueScore(0)
-			}
-		}
+	}
+
+	for _, agent := range cs.GetAgentMap() {
+		cs.killAgentBelowThreshold(agent.GetID())
 	}
 }
 
 func (cs *EnvironmentServer) RecordTurnInfo() {
-
-	// do not record if the turn number is 0
-	if cs.turn == 0 {
-		return
-	}
-
 	// agent information
 	agentRecords := []gameRecorder.AgentRecord{}
 	for _, agent := range cs.GetAgentMap() {
