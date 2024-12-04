@@ -83,6 +83,8 @@ func Team4_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent
 	mi_256.teamAgentsExpectedWithdraw = make(map[uuid.UUID]int)
 	mi_256.affinity = make(map[uuid.UUID]int)
 	mi_256.affinityChange = make(map[uuid.UUID]int)
+
+	fmt.Println(mi_256.GetID(), " has been created. Chaoticness:", mi_256.chaoticness, "Evilness:", mi_256.evilness)
 	return mi_256
 }
 
