@@ -37,6 +37,7 @@ type MI_256_v1 struct {
 	lastAuditTarget  uuid.UUID
 	lastVotes        map[uuid.UUID]bool
 	lastAuditStarter uuid.UUID
+	lastAuditResult  bool
 
 	// TODO: internal states
 
@@ -83,6 +84,17 @@ func Team4_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent
 	mi_256.affinity = make(map[uuid.UUID]int)
 	mi_256.affinityChange = make(map[uuid.UUID]int)
 	return mi_256
+}
+
+// ----------------------- Function Override -----------------------
+func (mi *MI_256_v1) SetAgentContributionAuditResult(agentID uuid.UUID, result bool) {
+	mi.lastAuditTarget = agentID
+	mi.lastAuditResult = result
+}
+
+func (mi *MI_256_v1) SetAgentWithdrawalAuditResult(agentID uuid.UUID, result bool) {
+	mi.lastAuditTarget = agentID
+	mi.lastAuditResult = result
 }
 
 // ----functions to calculate the data of other team members------------
@@ -860,7 +872,22 @@ func (mi *MI_256_v1) UpdateAffinityAfterVote() {
 	}
 
 }
+
 func (mi *MI_256_v1) UpdateAffinityAfterAudit() {
 	//if someone fails or succeeds an audit, then you would gain impression of them
+	affinityChange := 0
+	if mi.lastAuditResult {
+		// if the audit is successful, then you would like the person less
+		affinityChange = -1
+	} else {
+		// if the audit is unsuccessful, then you would like the person more
+		affinityChange = 1
+	}
+	mi.affinity[mi.lastAuditTarget] += 2 * affinityChange * mi.chaoticness
+	mi.affinity[mi.lastAuditStarter] -= affinityChange * mi.chaoticness
+}
 
+// ----------------------- Helper Functions -----------------------
+func GetAgentTeamAoA(mi *MI_256_v1) common.IArticlesOfAssociation {
+	return mi.Server.GetTeam(mi.GetID()).TeamAoA
 }
