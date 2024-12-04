@@ -562,13 +562,21 @@ func (mi *ExtendedAgent) Team1_VoteOnRankBoundaries(initialBoundaries [5]int) [5
 
 // ----------------------- Team 2 AoA Functions -----------------------
 
-func(mi *ExtendedAgent) Team2_GetLeaderVote() common.Vote {
+func (mi *ExtendedAgent) Team2_GetLeaderVote() common.Vote {
+	log.Printf("[WARNING] Base Leader Vote Function Called")
 	// Shouldn't happen, but if it does, then vote for yourself
-	if mi.TeamID == uuid.Nil {
+	if mi.TeamID == uuid.Nil || mi.TeamID == (uuid.UUID{}) {
 		return common.CreateVote(1, mi.GetID(), mi.GetID())
 	}
 
-	// Pending on more team information to see who to vote for
+	agentsInTeam := mi.Server.GetAgentsInTeam(mi.TeamID)
 
-	return common.CreateVote(1, mi.GetID(), mi.GetID())
+	if len(agentsInTeam) == 0 {
+		return common.CreateVote(1, mi.GetID(), mi.GetID())
+	}
+
+	// Randomly select a leader
+	leader := agentsInTeam[rand.Intn(len(agentsInTeam))]
+
+	return common.CreateVote(1, mi.GetID(), leader)
 }
