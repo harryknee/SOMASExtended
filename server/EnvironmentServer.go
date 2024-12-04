@@ -137,7 +137,7 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 			if agent.GetTeamID() == uuid.Nil || cs.IsAgentDead(agentId) {
 				continue
 			}
-			agent.StateWithdrawalToTeam()
+			agent.StateWithdrawalToTeam(agent)
 			agent.UpdateStateAfterWithdrawal()
 		}
 
@@ -582,13 +582,13 @@ func (cs *EnvironmentServer) RecordTurnInfo() {
 	// agent information
 	agentRecords := []gameRecorder.AgentRecord{}
 	for _, agent := range cs.GetAgentMap() {
-		newAgentRecord := agent.RecordAgentStatus()
+		newAgentRecord := agent.RecordAgentStatus(agent)
 		newAgentRecord.IsAlive = true
 		agentRecords = append(agentRecords, newAgentRecord)
 	}
 
 	for _, agent := range cs.deadAgents {
-		newAgentRecord := agent.RecordAgentStatus()
+		newAgentRecord := agent.RecordAgentStatus(agent)
 		newAgentRecord.IsAlive = false
 		agentRecords = append(agentRecords, newAgentRecord)
 	}

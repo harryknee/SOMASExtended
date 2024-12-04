@@ -51,7 +51,7 @@ type IExtendedAgent interface {
 	BroadcastSyncMessageToTeam(msg message.IMessage[IExtendedAgent])
 	HandleContributionMessage(msg *ContributionMessage)
 	StateContributionToTeam(instance IExtendedAgent)
-	StateWithdrawalToTeam()
+	StateWithdrawalToTeam(instance IExtendedAgent)
 
 	// Info
 	GetExposedInfo() ExposedAgentInfo
@@ -65,7 +65,7 @@ type IExtendedAgent interface {
 	GetWithdrawalAuditVote() Vote
 
 	// Data Recording
-	RecordAgentStatus() gameRecorder.AgentRecord
+	RecordAgentStatus(instance IExtendedAgent) gameRecorder.AgentRecord
 
 	//Agent internal state update
 	UpdateStateAfterContribution()

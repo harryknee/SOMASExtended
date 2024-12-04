@@ -361,9 +361,9 @@ func (mi *ExtendedAgent) StateContributionToTeam(instance common.IExtendedAgent)
 	mi.BroadcastSyncMessageToTeam(contributionMsg)
 }
 
-func (mi *ExtendedAgent) StateWithdrawalToTeam() {
+func (mi *ExtendedAgent) StateWithdrawalToTeam(instance common.IExtendedAgent) {
 	// Broadcast withdrawal to team
-	statedWithdrawal := mi.GetStatedWithdrawal(mi)
+	statedWithdrawal := instance.GetStatedWithdrawal(instance)
 	withdrawalMsg := mi.CreateWithdrawalMessage(statedWithdrawal)
 	mi.BroadcastSyncMessageToTeam(withdrawalMsg)
 }
@@ -534,15 +534,15 @@ func (mi *ExtendedAgent) SetTeamRanking(teamRanking []uuid.UUID) {
 }
 
 // ----------------------- Data Recording Functions -----------------------
-func (mi *ExtendedAgent) RecordAgentStatus() gameRecorder.AgentRecord {
+func (mi *ExtendedAgent) RecordAgentStatus(instance common.IExtendedAgent) gameRecorder.AgentRecord {
 	record := gameRecorder.NewAgentRecord(
 		mi.GetID(),
 		mi.trueSomasTeamID, // mi.GetTrueSomasTeamID()
 		mi.GetTrueScore(),
-		mi.GetActualContribution(mi),
-		mi.GetStatedContribution(mi),
-		mi.GetActualWithdrawal(mi),
-		mi.GetStatedWithdrawal(mi),
+		instance.GetActualContribution(instance),
+		instance.GetStatedContribution(instance),
+		instance.GetActualWithdrawal(instance),
+		instance.GetStatedWithdrawal(instance),
 		mi.GetTeamID(),
 	)
 	return record
