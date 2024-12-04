@@ -236,21 +236,21 @@ func (mi *MI_256_v1) StickOrAgain(accumulatedScore int, prevRoll int) bool {
 	moodthresh := 20
 	if mi.mood > moodthresh { // be greedy
 		if mi.LastScore < threshHigh {
-			return true
-		} else {
 			return false
+		} else {
+			return true
 		}
 	} else if (-moodthresh < mi.mood) && (mi.mood < moodthresh) {
 		if mi.LastScore < threshMid {
-			return true
-		} else {
 			return false
+		} else {
+			return true
 		}
 	} else {
 		if mi.LastScore < threshLow {
-			return true
-		} else {
 			return false
+		} else {
+			return true
 		}
 	}
 
