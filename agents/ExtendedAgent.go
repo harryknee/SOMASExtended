@@ -40,7 +40,7 @@ type ExtendedAgent struct {
 	LastTeamID uuid.UUID // Tracks the last team the agent was part of
 
 	// for recording purpose
-	trueSomasTeamID int // your true team id! e.g. team 4 -> 4. Override this in your agent constructor
+	TrueSomasTeamID int // your true team id! e.g. team 4 -> 4. Override this in your agent constructor
 
 	// Team 4 AoA
 	ProposedWithdrawalVote map[uuid.UUID]int
@@ -60,7 +60,7 @@ func GetBaseAgents(funcs agent.IExposedServerFunctions[common.IExtendedAgent], c
 		Server:                 funcs.(common.IServer), // Type assert the server functions to IServer interface
 		Score:                  configParam.InitScore,
 		VerboseLevel:           configParam.VerboseLevel,
-		AoARanking:             []int{3, 2, 1, 0},
+		AoARanking:             []int{0},
 		TeamRanking:            []uuid.UUID{},
 		ProposedWithdrawalVote: make(map[uuid.UUID]int),
 		RankUpVote:             make(map[uuid.UUID]int),
@@ -85,6 +85,11 @@ func (mi *ExtendedAgent) GetLastTeamID() uuid.UUID {
 // Can only be called by the server (otherwise other agents will see their true score)
 func (mi *ExtendedAgent) GetTrueScore() int {
 	return mi.Score
+}
+
+// Get the agent's true team ID
+func (mi *ExtendedAgent) GetTrueSomasTeamID() int {
+	return mi.TrueSomasTeamID
 }
 
 // Setter for the server to call, in order to set the true score for this agent
@@ -169,7 +174,10 @@ func (mi *ExtendedAgent) DecideRollAgain() {
 // This function MUST return the same value when called multiple times in the same turn
 func (mi *ExtendedAgent) GetActualContribution(instance common.IExtendedAgent) int {
 	if mi.HasTeam() {
-		contribution := instance.DecideContribution()
+		contribution := mi.Server.GetTeam(mi.GetID()).TeamAoA.GetExpectedContribution(mi.GetID(), mi.GetTrueScore())
+		if mi.GetTrueScore() < contribution {
+			contribution = mi.GetTrueScore() // give all score if less than expected
+		}
 		if mi.VerboseLevel > 6 {
 			log.Printf("%s is contributing %d to the common pool and thinks the common pool size is %d\n", mi.GetID(), contribution, mi.Server.GetTeam(mi.GetID()).GetCommonPool())
 		}
@@ -177,28 +185,6 @@ func (mi *ExtendedAgent) GetActualContribution(instance common.IExtendedAgent) i
 	} else {
 		if mi.VerboseLevel > 6 {
 			log.Printf("%s has no team, skipping contribution\n", mi.GetID())
-		}
-		return 0
-	}
-}
-
-func (mi *ExtendedAgent) DecideContribution() int {
-	// first check if the agent has a team
-	if !mi.HasTeam() {
-		return 0
-	}
-	// MVP: contribute exactly as defined in AoA
-	if mi.Server.GetTeam(mi.GetID()).TeamAoA != nil {
-		aoaExpectedContribution := mi.Server.GetTeam(mi.GetID()).TeamAoA.GetExpectedContribution(mi.GetID(), mi.GetTrueScore())
-		// double check if score in agent is sufficient (this should be handled by AoA though)
-		if mi.GetTrueScore() < aoaExpectedContribution {
-			return mi.GetTrueScore() // give all score if less than expected
-		}
-		return aoaExpectedContribution
-	} else {
-		if mi.VerboseLevel > 6 {
-			// should not happen!
-			log.Printf("[WARNING] Agent %s has no AoA, contributing 0\n", mi.GetID())
 		}
 		return 0
 	}
@@ -212,6 +198,7 @@ func (mi *ExtendedAgent) GetStatedContribution(instance common.IExtendedAgent) i
 	if !mi.HasTeam() {
 		return 0
 	}
+
 	// Hardcoded stated
 	statedContribution := instance.GetActualContribution(instance)
 	return statedContribution
@@ -223,9 +210,12 @@ func (mi *ExtendedAgent) GetActualWithdrawal(instance common.IExtendedAgent) int
 	if !mi.HasTeam() {
 		return 0
 	}
-	currentPool := mi.Server.GetTeam(mi.GetID()).GetCommonPool()
-	withdrawal := instance.DecideWithdrawal()
-	log.Printf("%s is withdrawing %d from the common pool of size %d\n", mi.GetID(), withdrawal, currentPool)
+	commonPool := mi.Server.GetTeam(mi.GetID()).GetCommonPool()
+	withdrawal := mi.Server.GetTeam(mi.GetID()).TeamAoA.GetExpectedWithdrawal(mi.GetID(), mi.GetTrueScore(), commonPool)
+	if commonPool < withdrawal {
+		withdrawal = commonPool
+	}
+	log.Printf("%s is withdrawing %d from the common pool of size %d\n", mi.GetID(), withdrawal, commonPool)
 	return withdrawal
 }
 
@@ -237,29 +227,7 @@ func (mi *ExtendedAgent) GetStatedWithdrawal(instance common.IExtendedAgent) int
 		return 0
 	}
 	// Currently, assume stated withdrawal matches actual withdrawal
-	return instance.DecideWithdrawal()
-}
-
-// Decide the withdrawal amount based on AoA and current pool size
-func (mi *ExtendedAgent) DecideWithdrawal() int {
-	// first check if the agent has a team
-	if !mi.HasTeam() {
-		return 0
-	}
-	if mi.Server.GetTeam(mi.GetID()).TeamAoA != nil {
-		// double check if score in agent is sufficient (this should be handled by AoA though)
-		commonPool := mi.Server.GetTeam(mi.GetID()).GetCommonPool()
-		aoaExpectedWithdrawal := mi.Server.GetTeam(mi.GetID()).TeamAoA.GetExpectedWithdrawal(mi.GetID(), mi.GetTrueScore(), commonPool)
-		if commonPool < aoaExpectedWithdrawal {
-			return commonPool
-		}
-		return aoaExpectedWithdrawal
-	} else {
-		if mi.VerboseLevel > 6 {
-			log.Printf("[WARNING] Agent %s has no AoA, withdrawing 0\n", mi.GetID())
-		}
-		return 0
-	}
+	return instance.GetActualContribution(instance)
 }
 
 /*
@@ -348,6 +316,20 @@ func (mi *ExtendedAgent) HandleWithdrawalMessage(msg *common.WithdrawalMessage) 
 	// Team's agent should implement logic to store or process the reported withdrawal amount as desired
 }
 
+func (mi *ExtendedAgent) HandleAgentOpinionRequestMessage(msg *common.AgentOpinionRequestMessage) {
+	// Team's agent should implement logic to respond to opinion request as desired
+	log.Printf("Agent %s received opinion request from %s\n", mi.GetID(), msg.AgentID)
+	opinion := 70
+	opinionResponseMsg := mi.CreateAgentOpinionResponseMessage(msg.AgentID, opinion)
+	log.Printf("Sending opinion response to %s\n", msg.AgentID)
+	mi.SendMessage(opinionResponseMsg, msg.AgentID) // Sent asynchronously, because this is "extra information"
+}
+
+func (mi *ExtendedAgent) HandleAgentOpinionResponseMessage(msg *common.AgentOpinionResponseMessage) {
+	// Team's agent should implement logic to store or process opinion response as desired
+	log.Printf("Agent %s received opinion response from %s: opinion=%d\n", mi.GetID(), msg.GetSender(), msg.AgentOpinion)
+}
+
 func (mi *ExtendedAgent) BroadcastSyncMessageToTeam(msg message.IMessage[common.IExtendedAgent]) {
 	// Send message to all team members synchronously
 	agentsInTeam := mi.Server.GetAgentsInTeam(mi.TeamID)
@@ -358,16 +340,16 @@ func (mi *ExtendedAgent) BroadcastSyncMessageToTeam(msg message.IMessage[common.
 	}
 }
 
-func (mi *ExtendedAgent) StateContributionToTeam() {
+func (mi *ExtendedAgent) StateContributionToTeam(instance common.IExtendedAgent) {
 	// Broadcast contribution to team
-	statedContribution := mi.GetStatedContribution(mi)
+	statedContribution := instance.GetStatedContribution(instance)
 	contributionMsg := mi.CreateContributionMessage(statedContribution)
 	mi.BroadcastSyncMessageToTeam(contributionMsg)
 }
 
-func (mi *ExtendedAgent) StateWithdrawalToTeam() {
+func (mi *ExtendedAgent) StateWithdrawalToTeam(instance common.IExtendedAgent) {
 	// Broadcast withdrawal to team
-	statedWithdrawal := mi.GetStatedWithdrawal(mi)
+	statedWithdrawal := instance.GetStatedWithdrawal(instance)
 	withdrawalMsg := mi.CreateWithdrawalMessage(statedWithdrawal)
 	mi.BroadcastSyncMessageToTeam(withdrawalMsg)
 }
@@ -412,6 +394,21 @@ func (mi *ExtendedAgent) CreateConfessionMessage(confession bool) *common.Confes
 	return &common.ConfessionMessage{
 		BaseMessage: mi.CreateBaseMessage(),
 		Confession:  confession,
+	}
+}
+
+func (mi *ExtendedAgent) CreateAgentOpinionRequestMessage(agentID uuid.UUID) *common.AgentOpinionRequestMessage {
+	return &common.AgentOpinionRequestMessage{
+		BaseMessage: mi.CreateBaseMessage(),
+		AgentID:     agentID,
+	}
+}
+
+func (mi *ExtendedAgent) CreateAgentOpinionResponseMessage(agentID uuid.UUID, opinion int) *common.AgentOpinionResponseMessage {
+	return &common.AgentOpinionResponseMessage{
+		BaseMessage:  mi.CreateBaseMessage(),
+		AgentID:      agentID,
+		AgentOpinion: opinion,
 	}
 }
 
@@ -552,16 +549,16 @@ func (mi *ExtendedAgent) SetTeamRanking(teamRanking []uuid.UUID) {
 }
 
 // ----------------------- Data Recording Functions -----------------------
-func (mi *ExtendedAgent) RecordAgentStatus() gameRecorder.AgentRecord {
+func (mi *ExtendedAgent) RecordAgentStatus(instance common.IExtendedAgent) gameRecorder.AgentRecord {
 	record := gameRecorder.NewAgentRecord(
-		mi.GetID(),
-		mi.trueSomasTeamID, // mi.GetTrueSomasTeamID()
-		mi.GetTrueScore(),
-		mi.GetActualContribution(mi),
-		mi.GetStatedContribution(mi),
-		mi.GetActualWithdrawal(mi),
-		mi.GetStatedWithdrawal(mi),
-		mi.GetTeamID(),
+		instance.GetID(),
+		instance.GetTrueSomasTeamID(),
+		instance.GetTrueScore(),
+		instance.GetStatedContribution(instance),
+		instance.GetActualContribution(instance),
+		instance.GetActualWithdrawal(instance),
+		instance.GetStatedWithdrawal(instance),
+		instance.GetTeamID(),
 	)
 	return record
 }
@@ -662,4 +659,25 @@ func (mi *ExtendedAgent) HandleProposedWithdrawalMessage(msg *common.ProposedWit
 func (mi *ExtendedAgent) GetPunishmentVoteMap() map[int]int {
 	return mi.PunishmentVoteMap
 
+}
+
+// ----------------------- Team 1 AoA Functions -----------------------
+
+func (mi *ExtendedAgent) Team1_ChairUpdateRanks(currentRanking map[uuid.UUID]int) map[uuid.UUID]int {
+	// Chair iterates through existing rank map in team
+	// and gets the new ranks of the agents in the team
+	// according to AoA function
+	newRanking := make(map[uuid.UUID]int)
+	for agentUUID, _ := range currentRanking {
+		newRank := mi.Server.GetTeam(agentUUID).TeamAoA.(*common.Team1AoA).GetAgentNewRank(agentUUID)
+		newRanking[agentUUID] = newRank
+	}
+
+	// Returns a map of agent UUIDs to new Rank (int)
+	return newRanking
+}
+
+func (mi *ExtendedAgent) Team1_VoteOnRankBoundaries(initialBoundaries [5]int) [5]int {
+	// Default behaviour should just vote for the guideline rank boundaries
+	return initialBoundaries
 }

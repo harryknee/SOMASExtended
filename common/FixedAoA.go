@@ -57,6 +57,17 @@ func (f *FixedAoA) GetAuditCost(commonPool int) int {
 // Otherwise, implement a voting mechanism to determine the agent to be audited
 // and return its UUID
 func (f *FixedAoA) GetVoteResult(votes []Vote) uuid.UUID {
+	if len(votes) == 0 {
+		return uuid.Nil
+	}
+
+	duration := 0
+	for _, vote := range votes {
+		duration += vote.AuditDuration
+	}
+	duration /= len(votes)
+
+	f.auditRecord.SetAuditDuration(duration)
 	return uuid.Nil
 }
 
@@ -75,6 +86,8 @@ func (t *FixedAoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
 
 	return shuffledAgents
 }
+
+func (t *FixedAoA) RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {}
 
 func CreateFixedAoA(duration int) IArticlesOfAssociation {
 	auditRecord := NewAuditRecord(duration)

@@ -3,9 +3,10 @@ package common
 import "github.com/google/uuid"
 
 type Vote struct {
-	IsVote     int
-	VoterID    uuid.UUID
-	VotedForID uuid.UUID
+	IsVote        int
+	VoterID       uuid.UUID
+	VotedForID    uuid.UUID
+	AuditDuration int
 }
 
 type IArticlesOfAssociation interface {
@@ -23,6 +24,7 @@ type IArticlesOfAssociation interface {
 	AoA4SetRankUp(map[uuid.UUID]map[uuid.UUID]int)
 	AoA4RunProposedWithdrawalVote(map[uuid.UUID]int, map[uuid.UUID]map[uuid.UUID]int)
 	AoA4HandlePunishmentVote(map[uuid.UUID]map[int]int) int
+	RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent)
 }
 
 func CreateVote(isVote int, voterId uuid.UUID, votedForId uuid.UUID) Vote {

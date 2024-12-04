@@ -39,8 +39,6 @@ type IExtendedAgent interface {
 	// NOTE: Any function calling these should have a parameter of type IExtendedAgent (instance IExtendedAgent)
 	DecideTeamForming(agentInfoList []ExposedAgentInfo) []uuid.UUID
 	StickOrAgain(accumulatedScore int, prevRoll int) bool
-	DecideContribution() int
-	DecideWithdrawal() int
 	VoteOnAgentEntry(candidateID uuid.UUID) bool
 	StickOrAgainFor(agentId uuid.UUID, accumulatedScore int, prevRoll int) int
 
@@ -50,19 +48,24 @@ type IExtendedAgent interface {
 	HandleWithdrawalMessage(msg *WithdrawalMessage)
 	BroadcastSyncMessageToTeam(msg message.IMessage[IExtendedAgent])
 	HandleContributionMessage(msg *ContributionMessage)
-	StateContributionToTeam()
-	StateWithdrawalToTeam()
+	HandleAgentOpinionRequestMessage(msg *AgentOpinionRequestMessage)
+	HandleAgentOpinionResponseMessage(msg *AgentOpinionResponseMessage)
+	StateContributionToTeam(instance IExtendedAgent)
+	StateWithdrawalToTeam(instance IExtendedAgent)
 
 	// Info
 	GetExposedInfo() ExposedAgentInfo
 	CreateScoreReportMessage() *ScoreReportMessage
 	CreateContributionMessage(statedAmount int) *ContributionMessage
 	CreateWithdrawalMessage(statedAmount int) *WithdrawalMessage
+	CreateAgentOpinionRequestMessage(agentID uuid.UUID) *AgentOpinionRequestMessage
+	CreateAgentOpinionResponseMessage(agentID uuid.UUID, opinion int) *AgentOpinionResponseMessage
 	LogSelfInfo()
 	GetAoARanking() []int
 	SetAoARanking(Preferences []int)
 	GetContributionAuditVote() Vote
 	GetWithdrawalAuditVote() Vote
+	GetTrueSomasTeamID() int
 
 	// Team4 AoA Functions
 	GetRankUpVote() map[uuid.UUID]int
@@ -81,5 +84,9 @@ type IExtendedAgent interface {
 	HandleConfessionMessage(msg *ConfessionMessage)
 	GetPunishmentVoteMap() map[int]int
 	// Data Recording
-	RecordAgentStatus() gameRecorder.AgentRecord
+	RecordAgentStatus(instance IExtendedAgent) gameRecorder.AgentRecord
+
+	// Team 1 specific functions
+	Team1_ChairUpdateRanks(rankMap map[uuid.UUID]int) map[uuid.UUID]int
+	Team1_VoteOnRankBoundaries(initialBoundaries [5]int) [5]int
 }
