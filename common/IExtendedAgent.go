@@ -17,6 +17,7 @@ type IExtendedAgent interface {
 	GetLastTeamID() uuid.UUID
 	GetTrueScore() int
 	GetTeamRanking() []uuid.UUID
+	GetName() int
 
 	// Functions that involve strategic decisions
 	StartTeamForming(instance IExtendedAgent, agentInfoList []ExposedAgentInfo)
@@ -25,8 +26,10 @@ type IExtendedAgent interface {
 	GetActualWithdrawal(instance IExtendedAgent) int
 	GetStatedContribution(instance IExtendedAgent) int
 	GetStatedWithdrawal(instance IExtendedAgent) int
+	GetLeaveOpinion(agentID uuid.UUID) bool
 
 	// Setters
+	SetName(name int)
 	SetTeamID(teamID uuid.UUID)
 	SetTrueScore(score int)
 	SetAgentContributionAuditResult(agentID uuid.UUID, result bool)
