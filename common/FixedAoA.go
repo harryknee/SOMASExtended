@@ -100,3 +100,12 @@ func CreateFixedAoA(duration int) IArticlesOfAssociation {
 		auditRecord: auditRecord,
 	}
 }
+
+// Do nothing
+func (t *FixedAoA) Team4_SetRankUp(rankUpVoteMap map[uuid.UUID]map[uuid.UUID]int) {
+}
+func (t *FixedAoA) Team4_RunProposedWithdrawalVote(map[uuid.UUID]int, map[uuid.UUID]map[uuid.UUID]int) {
+}
+func (t *FixedAoA) Team4_HandlePunishmentVote(map[uuid.UUID]map[int]int) int {
+	return 0
+}

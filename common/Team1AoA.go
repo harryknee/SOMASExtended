@@ -131,11 +131,41 @@ func (t *Team1AoA) GetVoteResult(votes []Vote) uuid.UUID {
 }
 
 func (t *Team1AoA) GetContributionAuditResult(agentId uuid.UUID) bool {
-	return t.auditResult[agentId].Back().Value.(int) == 1
+	list, ok := t.auditResult[agentId]
+	if !ok || list == nil {
+		return false
+	}
+
+	lastElement := list.Back()
+	if lastElement == nil {
+		return false
+	}
+
+	value, ok := lastElement.Value.(int)
+	if !ok {
+		return false
+	}
+
+	return value == 1
 }
 
 func (t *Team1AoA) GetWithdrawalAuditResult(agentId uuid.UUID) bool {
-	return t.auditResult[agentId].Back().Value.(int) == 1
+	list, ok := t.auditResult[agentId]
+	if !ok || list == nil {
+		return false
+	}
+
+	lastElement := list.Back()
+	if lastElement == nil {
+		return false
+	}
+
+	value, ok := lastElement.Value.(int)
+	if !ok {
+		return false
+	}
+
+	return value == 1
 }
 
 func (t *Team1AoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
@@ -364,4 +394,14 @@ func CreateTeam1AoA(team *Team) IArticlesOfAssociation {
 		agentLQueue:      agentLQueue,
 		commonPoolWeight: 5,
 	}
+}
+
+// Do nothing
+func (t *Team1AoA) Team4_SetRankUp(map[uuid.UUID]map[uuid.UUID]int) {
+}
+
+func (t *Team1AoA) Team4_RunProposedWithdrawalVote(map[uuid.UUID]int, map[uuid.UUID]map[uuid.UUID]int) {
+}
+func (t *Team1AoA) Team4_HandlePunishmentVote(map[uuid.UUID]map[int]int) int {
+	return 0
 }
