@@ -377,6 +377,10 @@ func (f *Team1AoA) ResourceAllocation(agentScores map[uuid.UUID]int, remainingRe
 	return make(map[uuid.UUID]int)
 }
 
+func (t *Team1AoA) GetPunishment(agentScore int, agentId uuid.UUID) int {
+	return (agentScore * 25) / 100
+}
+
 func CreateTeam1AoA(team *Team) IArticlesOfAssociation {
 	auditResult := make(map[uuid.UUID]*list.List)
 	ranking := make(map[uuid.UUID]int)

@@ -20,6 +20,7 @@ type IArticlesOfAssociation interface {
 	SetContributionAuditResult(agentId uuid.UUID, agentScore int, agentActualContribution int, agentStatedContribution int)
 	GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID
 	RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent)
+	GetPunishment(agentScore int, agentId uuid.UUID) int
 
 	// Team 4 AoA Specific Functions
 	Team4_SetRankUp(map[uuid.UUID]map[uuid.UUID]int)
