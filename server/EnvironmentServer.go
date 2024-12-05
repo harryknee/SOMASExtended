@@ -48,7 +48,7 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 	agentContributionsTotal := 0
 	for _, agentID := range team.Agents {
 		agent := cs.GetAgentMap()[agentID]
-		if agent.GetTeamID() == uuid.Nil || cs.IsAgentDead(agentID) {
+		if agent == nil || agent.GetTeamID() == uuid.Nil || cs.IsAgentDead(agentID) {
 			continue
 		}
 
@@ -108,7 +108,7 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 	orderedAgents := team.TeamAoA.GetWithdrawalOrder(team.Agents)
 	for _, agentID := range orderedAgents {
 		agent := cs.GetAgentMap()[agentID]
-		if agent.GetTeamID() == uuid.Nil || cs.IsAgentDead(agentID) {
+		if agent == nil || agent.GetTeamID() == uuid.Nil || cs.IsAgentDead(agentID) {
 			continue
 		}
 
