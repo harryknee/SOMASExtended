@@ -82,6 +82,13 @@ func (cs *EnvironmentServer) ElectNewLeader(teamId uuid.UUID) {
 func (cs *EnvironmentServer) OverrideAgentRolls(agentId uuid.UUID, leaderId uuid.UUID) {
 	controlled := cs.GetAgentMap()[agentId]
 	leader := cs.GetAgentMap()[leaderId]
+
+	if leader == nil {
+		log.Printf("Leader with ID %v not found", leaderId)
+		cs.ElectNewLeader(agentId)
+		return
+	}
+
 	currentScore, accumulatedScore := controlled.GetTrueScore(), 0
 	prevRoll := -1
 	rounds := 0
