@@ -731,6 +731,9 @@ func (cs *EnvironmentServer) killAgent(agentID uuid.UUID) {
 		}
 	}
 
+	// check orphan pool and remove agent if it is there
+	delete(cs.orphanPool, agentID)
+
 	// Add the agent to the dead agent list and remove it from the server's agent map
 	cs.deadAgents = append(cs.deadAgents, agent)
 	cs.RemoveAgent(agent)
