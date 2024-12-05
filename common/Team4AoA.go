@@ -72,7 +72,7 @@ func (t *Team4AoA) Team4_HandlePunishmentVote(punishmentVoteMap map[uuid.UUID]ma
 	// Calculate median for each punishment
 	medianGrades := make(map[int]int)
 	for punishment, grades := range punishmentGrades {
-		medianGrades[punishment] = calculateMedian(grades)
+		medianGrades[punishment] = getMedian(grades)
 	}
 
 	// Determine punishment with the highest median grade
@@ -106,7 +106,7 @@ func getPunishmentScore(punishment int) int {
 	}
 }
 
-func calculateMedian(grades []int) int {
+func getMedian(grades []int) int {
 	if len(grades) == 0 {
 		return 0
 	}
@@ -383,5 +383,13 @@ func (t *Team4AoA) GetVoteWeight(rank string) int {
 // Unused Functions
 
 func (t *Team4AoA) RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {
+
+}
+
+func (f *Team4AoA) ResourceAllocation(agentScores map[uuid.UUID]int, remainingResources int) map[uuid.UUID]int {
+	return make(map[uuid.UUID]int)
+}
+
+func (t *Team4AoA) RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {
 
 }

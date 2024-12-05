@@ -95,24 +95,3 @@ func (mi *ExtendedAgent) Team4_GetPunishmentVoteMap() map[int]int {
 	return make(map[int]int)
 
 }
-
-// ----------------------- Team 1 AoA Functions -----------------------
-
-func (mi *ExtendedAgent) Team1_ChairUpdateRanks(currentRanking map[uuid.UUID]int) map[uuid.UUID]int {
-	// Chair iterates through existing rank map in team
-	// and gets the new ranks of the agents in the team
-	// according to AoA function
-	newRanking := make(map[uuid.UUID]int)
-	for agentUUID, _ := range currentRanking {
-		newRank := mi.Server.GetTeam(agentUUID).TeamAoA.(*common.Team1AoA).GetAgentNewRank(agentUUID)
-		newRanking[agentUUID] = newRank
-	}
-
-	// Returns a map of agent UUIDs to new Rank (int)
-	return newRanking
-}
-
-func (mi *ExtendedAgent) Team1_VoteOnRankBoundaries(initialBoundaries [5]int) [5]int {
-	// Default behaviour should just vote for the guideline rank boundaries
-	return initialBoundaries
-}
