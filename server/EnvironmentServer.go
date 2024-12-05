@@ -877,9 +877,6 @@ func (cs *EnvironmentServer) ResetAgents() {
 
 func (cs *EnvironmentServer) ApplyThreshold() {
 	cs.thresholdAppliedInTurn = true
-	for _, team := range cs.Teams {
-		team.SetCommonPool(0)
-	}
 
 	for _, agent := range cs.GetAgentMap() {
 		cs.killAgentBelowThreshold(agent.GetID())
