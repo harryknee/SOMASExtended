@@ -113,7 +113,7 @@ func (a1 *Team1Agent) GetActualContribution(instance common.IExtendedAgent) int 
 			return aoaExpectedContribution
 		}
 	} else {
-		log.Fatal("Agent does not have a team")
+		log.Println("Agent does not have a team")
 		return 0
 	}
 }
@@ -153,7 +153,7 @@ func (a1 *Team1Agent) GetActualWithdrawal(instance common.IExtendedAgent) int {
 			return aoaExpectedWithdrawal
 		}
 	} else {
-		log.Fatal("Agent does not have a team")
+		log.Println("Agent does not have a team")
 		return 0
 	}
 }
@@ -207,7 +207,7 @@ func (a1 *Team1Agent) hasClimbedRankAndWithdrawn() bool {
 		memoryEntry := a1.memory[a1.GetID()]
 		return currentRank > 1 && len(memoryEntry.historyWithdrawal) > 0
 	} else {
-		log.Fatal("Agent does not have a team")
+		log.Println("Agent does not have a team")
 		return false
 	}
 }
