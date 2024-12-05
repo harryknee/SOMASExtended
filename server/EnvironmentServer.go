@@ -888,10 +888,10 @@ func (cs *EnvironmentServer) RemoveAgentFromTeam(agentID uuid.UUID) {
 	team.RemoveAgent(agentID)
 }
 
-// Ask all the agents in if they want to leave the team they are in or not. Ignore dead agents
+// Ask all the agents if they want to leave the team they are in or not. Ignore dead agents
 func (cs *EnvironmentServer) ProcessAgentsLeaving() {
 	for agentID, agent := range cs.GetAgentMap() {
-		if !cs.IsAgentDead(agentID) && agent.GetLeaveOpinion(agent) {
+		if !cs.IsAgentDead(agentID) && agent.GetLeaveOpinion(agentID) {
 			cs.RemoveAgentFromTeam(agentID)
 		}
 	}
