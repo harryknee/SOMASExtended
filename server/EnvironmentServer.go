@@ -40,10 +40,6 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
-
 func (cs *EnvironmentServer) RunTurn(i, j int) {
 	log.Printf("\n\nIteration %v, Turn %v, current agent count: %v\n", i, j, len(cs.GetAgentMap()))
 
@@ -170,9 +166,6 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 	}
 
 	// TODO: Reallocate agents who left their teams during the turn
-	for teamID := range cs.Teams {
-		cs.AskIfLeave(teamID)
-	}
 
 	// check if threshold turn
 
@@ -183,6 +176,9 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 	} else {
 		cs.thresholdAppliedInTurn = false // record data
 	}
+
+	// Only living agents can leave their team
+	cs.ProcessAgentsLeaving()
 
 	// do not record if the turn number is 0
 	if cs.turn > 0 {
@@ -869,7 +865,7 @@ func (cs *EnvironmentServer) GetAgentScores() map[uuid.UUID]int {
 }
 
 // In case an AoA requires agents to be kicked
-func (cs *EnvironmentServer) RemoveAgentFromTeam(agentID uuid.UUID, teamID uuid.UUID) {
+func (cs *EnvironmentServer) RemoveAgentFromTeam(agentID uuid.UUID) {
 
 	// If the agent is already dead it can't really be kicked
 	if cs.IsAgentDead(agentID) {
@@ -877,42 +873,26 @@ func (cs *EnvironmentServer) RemoveAgentFromTeam(agentID uuid.UUID, teamID uuid.
 		return
 	}
 
-	team, agent := cs.GetTeamFromTeamID(teamID), cs.GetAgentMap()[agentID]
+	// GetTeam() is a misleading name, but this gets the team the agent is in, as well as the agent itself
+	team, agent := cs.GetTeam(agentID), cs.GetAgentMap()[agentID]
 
 	// Set the current agent's team ID back to the default after it has been used to get the team structure
 	agent.SetTeamID(uuid.UUID{})
 
 	// Safety check to confirm that the team actually exists
 	if team == nil {
-		log.Printf("[WARNING] Agent being kicked does not have a team!! TeamID: %s || AgentID: %s", teamID, agentID)
+		log.Printf("[WARNING] Agent being kicked does not have a team!! AgentID: %s", agentID)
 		return
 	}
 
-	// Remove the agent from the team's Agents slice
-	for i, a := range team.Agents {
-		if a == agentID {
-			team.Agents = append(team.Agents[:i], team.Agents[i+1:]...)
-			break
-		}
-	}
+	team.RemoveAgent(agentID)
 }
 
-// Ask all the agents in a team if they want to leave or not
-func (cs *EnvironmentServer) AskIfLeave(teamID uuid.UUID) {
-	team := cs.GetTeamFromTeamID(teamID)
-
-	leavingAgentIDs := make([]uuid.UUID, 0)
-
-	for _, agentID := range team.Agents {
-		agent := cs.GetAgentMap()[agentID]
-
-		// Gather all the agents that want to leave first, to avoid altering the agent slice
-		if agent.GetLeaveOpinion(agent) {
-			leavingAgentIDs = append(leavingAgentIDs, agentID)
+// Ask all the agents in if they want to leave the team they are in or not. Ignore dead agents
+func (cs *EnvironmentServer) ProcessAgentsLeaving() {
+	for agentID, agent := range cs.GetAgentMap() {
+		if !cs.IsAgentDead(agentID) && agent.GetLeaveOpinion(agent) {
+			cs.RemoveAgentFromTeam(agentID)
 		}
-	}
-
-	for _, agentID := range leavingAgentIDs {
-		cs.RemoveAgentFromTeam(agentID, teamID)
 	}
 }
