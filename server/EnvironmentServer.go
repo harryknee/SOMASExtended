@@ -48,13 +48,17 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 	agentContributionsTotal := 0
 	for _, agentID := range team.Agents {
 		agent := cs.GetAgentMap()[agentID]
-		if agent.GetTeamID() == uuid.Nil || cs.IsAgentDead(agentID) {
+		if agent == nil || agent.GetTeamID() == uuid.Nil || cs.IsAgentDead(agentID) {
 			continue
 		}
-		// Override agent rolls for testing purposes
-		// agentList := []uuid.UUID{agentID}
-		// cs.OverrideAgentRolls(agentID, agentList, 1)
-		agent.StartRollingDice(agent)
+
+		if team.TeamAoAID == 2 && team.TeamAoA.(*common.Team2AoA).GetRollsLeft(agentID) > 0 {
+			team.TeamAoA.(*common.Team2AoA).RollOnce(agentID)
+			cs.OverrideAgentRolls(agentID, team.TeamAoA.(*common.Team2AoA).GetLeader())
+		} else {
+			agent.StartRollingDice(agent)
+		}
+
 		agentActualContribution := agent.GetActualContribution(agent)
 		agentContributionsTotal += agentActualContribution
 		agentStatedContribution := agent.GetStatedContribution(agent)
@@ -82,7 +86,19 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 	// Execute Contribution Audit if necessary
 	if agentToAudit := team.TeamAoA.GetVoteResult(contributionAuditVotes); agentToAudit != uuid.Nil {
 		auditResult := team.TeamAoA.GetContributionAuditResult(agentToAudit)
-		cs.ApplyPunishment(team, agentToAudit)
+
+		if auditResult {
+			if team.TeamAoAID == 2 {
+				if agentToAudit == team.TeamAoA.(*common.Team2AoA).GetLeader() {
+					cs.ElectNewLeader(team.TeamID)
+				}
+				if team.TeamAoA.(*common.Team2AoA).GetOffences(agentToAudit) == 3 {
+					cs.RemoveAgentFromTeam(agentToAudit)
+				}
+			}
+			cs.ApplyPunishment(team, agentToAudit)
+		}
+
 		for _, agentID := range team.Agents {
 			agent := cs.GetAgentMap()[agentID]
 			agent.SetAgentContributionAuditResult(agentToAudit, auditResult)
@@ -92,7 +108,7 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 	orderedAgents := team.TeamAoA.GetWithdrawalOrder(team.Agents)
 	for _, agentID := range orderedAgents {
 		agent := cs.GetAgentMap()[agentID]
-		if agent.GetTeamID() == uuid.Nil || cs.IsAgentDead(agentID) {
+		if agent == nil || agent.GetTeamID() == uuid.Nil || cs.IsAgentDead(agentID) {
 			continue
 		}
 
@@ -141,7 +157,19 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 	// Execute Withdrawal Audit if necessary
 	if agentToAudit := team.TeamAoA.GetVoteResult(withdrawalAuditVotes); agentToAudit != uuid.Nil {
 		auditResult := team.TeamAoA.GetWithdrawalAuditResult(agentToAudit)
-		cs.ApplyPunishment(team, agentToAudit)
+
+		if auditResult {
+			if team.TeamAoAID == 2 {
+				if agentToAudit == team.TeamAoA.(*common.Team2AoA).GetLeader() {
+					cs.ElectNewLeader(team.TeamID)
+				}
+				if team.TeamAoA.(*common.Team2AoA).GetOffences(agentToAudit) == 3 {
+					cs.RemoveAgentFromTeam(agentToAudit)
+				}
+			}
+			cs.ApplyPunishment(team, agentToAudit)
+		}
+
 		for _, agentID := range team.Agents {
 			agent := cs.GetAgentMap()[agentID]
 			agent.SetAgentWithdrawalAuditResult(agentToAudit, auditResult)
@@ -567,19 +595,27 @@ func (cs *EnvironmentServer) allocateAoAs() {
 			switch preference {
 			case 1:
 				team.TeamAoA = common.CreateTeam1AoA(team)
+				team.TeamAoAID = 1
 			case 2:
 				team.TeamAoA = common.CreateTeam2AoA(team, uuid.Nil, 5)
+				team.TeamAoAID = 2
+				cs.ElectNewLeader(team.TeamID)
 			case 3:
 				team.TeamAoA = common.CreateFixedAoA(1)
+				// TODO: Change when AoA 3 is implemented
+				team.TeamAoAID = 0
 			case 4:
 				team.TeamAoA = common.CreateTeam4AoA(team)
+				team.TeamAoAID = 4
 			case 5:
 				team.TeamAoA = common.CreateTeam5AoA()
 				team.TeamAoAID = 5
 			case 6:
 				team.TeamAoA = common.CreateFixedAoA(1)
+				team.TeamAoAID = 0
 			default:
 				team.TeamAoA = common.CreateFixedAoA(1)
+				team.TeamAoAID = 0
 			}
 
 			cs.Teams[team.TeamID] = team
@@ -635,17 +671,11 @@ func (cs *EnvironmentServer) LogAgentStatus() {
 * print the elements in the order that you added them.
  */
 func (cs *EnvironmentServer) PrintOrphanPool() {
-	for i, v := range cs.orphanPool {
+	for i := range cs.orphanPool {
 		// truncate the UUIDs to make it easier to read
 		shortAgentId := i.String()[:8]
-		shortTeamIds := make([]string, len(v))
 
-		// go over all the teams in the wishlist and add to shortened IDs
-		for _, teamID := range v {
-			shortTeamIds = append(shortTeamIds, teamID.String()[:8])
-		}
-
-		log.Println(shortAgentId, " Wants to join : ", shortTeamIds)
+		log.Println(shortAgentId, " Wants to join a team")
 	}
 }
 
@@ -730,6 +760,9 @@ func (cs *EnvironmentServer) killAgent(agentID uuid.UUID) {
 			}
 		}
 	}
+
+	// check orphan pool and remove agent if it is there
+	delete(cs.orphanPool, agentID)
 
 	// Add the agent to the dead agent list and remove it from the server's agent map
 	cs.deadAgents = append(cs.deadAgents, agent)
@@ -1116,4 +1149,14 @@ func (cs *EnvironmentServer) ApplyPunishment(team *common.Team, agentToAudit uui
 	team.SetCommonPool(currentPool + punishmentResult)
 	updatedPool := team.GetCommonPool()
 	log.Printf("Updated Common Pool: %d\n", updatedPool)
+}
+
+func (cs *EnvironmentServer) GetTeamsByAoA(aoa int) []common.Team {
+	teams := make([]common.Team, 0)
+	for _, team := range cs.Teams {
+		if team.TeamAoAID == aoa {
+			teams = append(teams, *team)
+		}
+	}
+	return teams
 }
