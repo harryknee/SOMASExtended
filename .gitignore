@@ -13,6 +13,7 @@
 /dist/
 /pkg/
 /vendor/
+/venv/
 
 # Editor and IDE specific files
 .vscode/
