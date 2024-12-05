@@ -21,6 +21,7 @@ type ExtendedAgent struct {
 	Server common.IServer
 	Score  int
 	TeamID uuid.UUID
+	Name int
 
 	// private
 	LastScore int
@@ -88,6 +89,10 @@ func (mi *ExtendedAgent) GetTrueSomasTeamID() int {
 // Setter for the server to call, in order to set the true score for this agent
 func (mi *ExtendedAgent) SetTrueScore(score int) {
 	mi.Score = score
+}
+
+func (mi *ExtendedAgent) SetName(name int){
+	mi.Name = name
 }
 
 // custom function: ask for rolling the dice
@@ -221,6 +226,10 @@ func (mi *ExtendedAgent) GetStatedWithdrawal(instance common.IExtendedAgent) int
 	}
 	// Currently, assume stated withdrawal matches actual withdrawal
 	return instance.GetActualContribution(instance)
+}
+
+func (mi *ExtendedAgent) GetName() int {
+	return mi.Name 
 }
 
 /*
