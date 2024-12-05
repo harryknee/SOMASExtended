@@ -16,7 +16,6 @@ import (
  * TODO:
  * - Write some tests for the audit functionality here
  * - Implement the functionality on the server to work with this (so with offences)
- * - Implement the kick functionality on the server
  * - Make sure that if the leader dies, or is audited, they have to be re-elected
  */
 
@@ -133,9 +132,11 @@ func (t *Team2AoA) GetVoteResult(votes []Vote) uuid.UUID {
 	if len(votes) == 0 {
 		return uuid.Nil
 	}
+
 	voteMap := make(map[uuid.UUID]int)
 	duration := 0
 	count := len(t.Team.Agents)
+
 	for _, vote := range votes {
 		durationVote, agentVotedFor := vote.AuditDuration, vote.VotedForID
 		votes := 1
@@ -148,13 +149,18 @@ func (t *Team2AoA) GetVoteResult(votes []Vote) uuid.UUID {
 		}
 		duration += durationVote
 	}
+
 	duration /= len(votes)
-	t.auditRecord.SetAuditDuration(duration)
+	if duration > 0 {
+		t.auditRecord.SetAuditDuration(duration)
+	}
+
 	for votedFor, votes := range voteMap {
 		if votes >= ((count / 2) + 1) {
 			return votedFor
 		}
 	}
+
 	return uuid.Nil
 }
 
@@ -207,6 +213,10 @@ func (t *Team2AoA) GetOffenders(numOffences int) []uuid.UUID {
 		}
 	}
 	return offenders
+}
+
+func (t *Team2AoA) GetPunishment(agentScore int, agentId uuid.UUID) int {
+	return (agentScore * 25) / 100
 }
 
 func CreateTeam2AoA(team *Team, leader uuid.UUID, auditDuration int) IArticlesOfAssociation {

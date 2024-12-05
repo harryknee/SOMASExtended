@@ -29,4 +29,5 @@ visualization_output/
 logs/
 
 # Environment files
+venv/
 .env

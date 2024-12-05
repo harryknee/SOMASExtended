@@ -70,7 +70,8 @@ func main() {
 		// Add other teams' agents here
 	}
 
-	for _, agent := range agentPopulation {
+	for i, agent := range agentPopulation {
+		agent.SetName(i)
 		serv.AddAgent(agent)
 	}
 
