@@ -179,6 +179,9 @@ func (mi *MI_256_v1) CalcAOAPunishment() {
 func (mi *MI_256_v1) CalcAOAOpinion() {
 
 }
+func (mi *MI_256_v1) SetAoARanking(Preferences []int) {
+	mi.AoARanking = Preferences
+}
 
 // ----------------------- Strategies -----------------------
 
@@ -685,11 +688,12 @@ func (mi *MI_256_v1) BuildVotemap(IsHarmfulIntent bool) map[uuid.UUID]float64 {
 }
 
 func (mi *MI_256_v1) GetWithdrawalAuditVote() common.Vote {
+	// fmt.Println("audit starts")
 	/*vote happens at many occasions:
 
 	when approving to rank up
 	when approving withdrawal
-	voting for a leader(maybe)
+	voting for a leader(maybe)s
 	voting for a AoA
 	voting for audition
 	*/
@@ -703,17 +707,19 @@ func (mi *MI_256_v1) GetWithdrawalAuditVote() common.Vote {
 			max_audit_perentage = audit_percentage
 		}
 	}
-
+	var vote common.Vote
 	random := rand.Float64()
 	if random <= max_audit_perentage {
-		return common.CreateVote(1, mi.GetID(), max_agent)
+		vote = common.CreateVote(1, mi.GetID(), max_agent)
 
 	} else if random >= max_audit_perentage+(1-max_audit_perentage)/2 {
-		return common.CreateVote(-1, mi.GetID(), max_agent)
+		vote = common.CreateVote(-1, mi.GetID(), max_agent)
 	} else {
 		// if in this range, abstain
-		return common.CreateVote(0, mi.GetID(), max_agent)
+		vote = common.CreateVote(0, mi.GetID(), max_agent)
 	}
+	fmt.Println(mi.GetID(), " audit vote", vote)
+	return vote
 
 }
 
@@ -784,6 +790,8 @@ func (mi *MI_256_v1) RandomizeCharacter() {
 	mi.evilness = rand.Intn(3) + 1
 	mi.haveIlied = false
 	mi.Initialize_opninions()
+	mi.AoARanking = []int{4, 1, 2, 3, 4, 5}
+	mi.SetAoARanking(mi.AoARanking)
 }
 
 // ----------- functions that update character opinions ---------------------------------
@@ -1097,4 +1105,13 @@ func (mi *MI_256_v1) Team4_ProposeWithdrawal() int {
 	}
 	mi.DecideWithdrawal()
 	return mi.IntendedWithdrawal
+}
+func (mi *MI_256_v1) Team4_GetPunishmentVoteMap() map[int]int {
+	punishmentVoteMap := make(map[int]int)
+
+	for punishment := 0; punishment <= 4; punishment++ {
+		punishmentVoteMap[punishment] = min(4, rand.Intn(5)+max(mi.evilness-2, 0))
+	}
+
+	return punishmentVoteMap
 }
