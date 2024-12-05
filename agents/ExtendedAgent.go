@@ -223,6 +223,12 @@ func (mi *ExtendedAgent) GetStatedWithdrawal(instance common.IExtendedAgent) int
 	return instance.GetActualContribution(instance)
 }
 
+func (mi *ExtendedAgent) GetLeaveOpinion(instance common.IExtendedAgent) bool {
+	// Currently defaulted to false. If called on itself, won't this go into an infinite loop?
+	// return mi.GetLeaveOpinion(instance)
+	return false
+}
+
 /*
 Provide agentId for memory, current accumulated score
 (to see if above or below predicted threshold for common pool contribution)

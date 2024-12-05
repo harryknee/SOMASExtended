@@ -170,6 +170,9 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 	}
 
 	// TODO: Reallocate agents who left their teams during the turn
+	for teamID := range cs.Teams {
+		cs.AskIfLeave(teamID)
+	}
 
 	// check if threshold turn
 
@@ -863,4 +866,53 @@ func (cs *EnvironmentServer) GetAgentScores() map[uuid.UUID]int {
 		agentScores[agent.GetID()] = agent.GetTrueScore()
 	}
 	return agentScores
+}
+
+// In case an AoA requires agents to be kicked
+func (cs *EnvironmentServer) RemoveAgentFromTeam(agentID uuid.UUID, teamID uuid.UUID) {
+
+	// If the agent is already dead it can't really be kicked
+	if cs.IsAgentDead(agentID) {
+		log.Printf("[WARNING] Dead agent should not be being kicked: %s", agentID)
+		return
+	}
+
+	team, agent := cs.GetTeamFromTeamID(teamID), cs.GetAgentMap()[agentID]
+
+	// Set the current agent's team ID back to the default after it has been used to get the team structure
+	agent.SetTeamID(uuid.UUID{})
+
+	// Safety check to confirm that the team actually exists
+	if team == nil {
+		log.Printf("[WARNING] Agent being kicked does not have a team!! TeamID: %s || AgentID: %s", teamID, agentID)
+		return
+	}
+
+	// Remove the agent from the team's Agents slice
+	for i, a := range team.Agents {
+		if a == agentID {
+			team.Agents = append(team.Agents[:i], team.Agents[i+1:]...)
+			break
+		}
+	}
+}
+
+// Ask all the agents in a team if they want to leave or not
+func (cs *EnvironmentServer) AskIfLeave(teamID uuid.UUID) {
+	team := cs.GetTeamFromTeamID(teamID)
+
+	leavingAgentIDs := make([]uuid.UUID, 0)
+
+	for _, agentID := range team.Agents {
+		agent := cs.GetAgentMap()[agentID]
+
+		// Gather all the agents that want to leave first, to avoid altering the agent slice
+		if agent.GetLeaveOpinion(agent) {
+			leavingAgentIDs = append(leavingAgentIDs, agentID)
+		}
+	}
+
+	for _, agentID := range leavingAgentIDs {
+		cs.RemoveAgentFromTeam(agentID, teamID)
+	}
 }

@@ -25,6 +25,7 @@ type IExtendedAgent interface {
 	GetActualWithdrawal(instance IExtendedAgent) int
 	GetStatedContribution(instance IExtendedAgent) int
 	GetStatedWithdrawal(instance IExtendedAgent) int
+	GetLeaveOpinion(instance IExtendedAgent) bool
 
 	// Setters
 	SetTeamID(teamID uuid.UUID)
