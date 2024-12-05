@@ -58,6 +58,7 @@ type Team1BoundaryBallotRequestMessage struct {
 type Team1BoundaryBallotResponseMessage struct {
 	message.BaseMessage
 	RankedCandidates [3]int
+}
 
 type Team4_ProposedWithdrawalMessage struct {
 	message.BaseMessage
@@ -109,7 +110,7 @@ func (msg *Team1BoundaryBallotRequestMessage) InvokeMessageHandler(agent IExtend
 func (msg *Team1BoundaryBallotResponseMessage) InvokeMessageHandler(agent IExtendedAgent) {
 	agent.Team1_BoundaryBallotResponseHandler(msg)
 }
- 
+
 func (msg *Team4_ProposedWithdrawalMessage) InvokeMessageHandler(agent IExtendedAgent) {
 	agent.Team4_HandleProposedWithdrawalMessage(msg)
 }
