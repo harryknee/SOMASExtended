@@ -1132,21 +1132,23 @@ func (cs *EnvironmentServer) ProcessAgentsLeaving() {
 
 func (cs *EnvironmentServer) ApplyPunishment(team *common.Team, agentToAudit uuid.UUID) {
 	agent := cs.GetAgentMap()[agentToAudit]
-	agentScore := agent.GetTrueScore()
+	
+	if agent.HasTeam(){
+		agentScore := agent.GetTrueScore()
+		punishmentResult := team.TeamAoA.GetPunishment(agentScore, agentToAudit)
+		log.Printf("Punishment Result for Agent %v: %d (Agent Score: %d)\n", agent.GetID(), punishmentResult, agentScore)
 
-	punishmentResult := team.TeamAoA.GetPunishment(agentScore, agentToAudit)
-	log.Printf("Punishment Result for Agent %v: %d (Agent Score: %d)\n", agent.GetID(), punishmentResult, agentScore)
+		newScore := agentScore - punishmentResult
+		agent.SetTrueScore(newScore)
+		log.Printf("Updated Score for Agent %v: %d\n", agent.GetID(), agent.GetTrueScore())
 
-	newScore := agentScore - punishmentResult
-	agent.SetTrueScore(newScore)
-	log.Printf("Updated Score for Agent %v: %d\n", agent.GetID(), agent.GetTrueScore())
+		currentPool := team.GetCommonPool()
+		log.Printf("Current Common Pool: %d\n", currentPool)
 
-	currentPool := team.GetCommonPool()
-	log.Printf("Current Common Pool: %d\n", currentPool)
-
-	team.SetCommonPool(currentPool + punishmentResult)
-	updatedPool := team.GetCommonPool()
-	log.Printf("Updated Common Pool: %d\n", updatedPool)
+		team.SetCommonPool(currentPool + punishmentResult)
+		updatedPool := team.GetCommonPool()
+		log.Printf("Updated Common Pool: %d\n", updatedPool)
+	}
 }
 
 func (cs *EnvironmentServer) GetTeamsByAoA(aoa int) []common.Team {
