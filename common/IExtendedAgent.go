@@ -69,6 +69,22 @@ type IExtendedAgent interface {
 	GetWithdrawalAuditVote() Vote
 	GetTrueSomasTeamID() int
 
+	// Team4 AoA Functions
+	Team4_GetRankUpVote() map[uuid.UUID]int
+	Team4_GetConfession() bool
+	Team4_GetProposedWithdrawalVote() map[uuid.UUID]int
+
+	Team4_GetProposedWithdrawal(instance IExtendedAgent) int
+	Team4_ProposeWithdrawal() int
+
+	Team4_StateProposalToTeam()
+	Team4_CreateProposedWithdrawalMessage(statedAmount int) *Team4_ProposedWithdrawalMessage
+	Team4_HandleProposedWithdrawalMessage(msg *Team4_ProposedWithdrawalMessage)
+
+	Team4_StateConfessionToTeam()
+	Team4_CreateConfessionMessage(confession bool) *Team4_ConfessionMessage
+	Team4_HandleConfessionMessage(msg *Team4_ConfessionMessage)
+	Team4_GetPunishmentVoteMap() map[int]int
 	// Data Recording
 	RecordAgentStatus(instance IExtendedAgent) gameRecorder.AgentRecord
 
