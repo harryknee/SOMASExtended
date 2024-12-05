@@ -12,7 +12,7 @@ type AgentRecord struct {
 	TurnNumber      int
 	IterationNumber int
 	AgentID         uuid.UUID
-	TrueSomasTeamID int // SOMAS team number, e.g. Team 4
+	TrueSomasTeamID int // SOMAS team number, e.g., Team 4
 
 	// turn-specific fields
 	IsAlive            bool
@@ -25,6 +25,7 @@ type AgentRecord struct {
 	TeamID uuid.UUID
 }
 
+// NewAgentRecord creates a new instance of AgentRecord
 func NewAgentRecord(agentID uuid.UUID, trueSomasTeamID int, score int, contribution int, statedContribution int, withdrawal int, statedWithdrawal int, teamID uuid.UUID) AgentRecord {
 	return AgentRecord{
 		AgentID:            agentID,
