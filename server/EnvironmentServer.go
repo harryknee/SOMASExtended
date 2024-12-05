@@ -644,7 +644,6 @@ func (cs *EnvironmentServer) PrintOrphanPool() {
 		// truncate the UUIDs to make it easier to read
 		shortAgentId := i.String()[:8]
 
-
 		log.Println(shortAgentId, " Wants to join a team")
 	}
 }
@@ -1121,7 +1120,7 @@ func (cs *EnvironmentServer) ApplyPunishment(team *common.Team, agentToAudit uui
 	log.Printf("Updated Common Pool: %d\n", updatedPool)
 }
 
-func (cs *EnvironmentServer) GetTeamsByAoA (aoa int) []common.Team {
+func (cs *EnvironmentServer) GetTeamsByAoA(aoa int) []common.Team {
 	teams := make([]common.Team, 0)
 	for _, team := range cs.Teams {
 		if team.TeamAoAID == aoa {

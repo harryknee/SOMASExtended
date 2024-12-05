@@ -92,7 +92,6 @@ func (cs *EnvironmentServer) AllocateOrphans() {
 			log.Printf("orphan %v has no AoA preferences and no team preference remains in orphan pool\n", orphanID)
 		}
 
-
 		if (accepted) && (acceptedTeamID != uuid.Nil) {
 			agent_map[orphanID].SetTeamID(acceptedTeamID) // Update agent's knowledge of its team
 			cs.AddAgentToTeam(orphanID, acceptedTeamID)   // Update team's knowledge of its agents
@@ -146,5 +145,3 @@ func (cs *EnvironmentServer) PickUpOrphans() {
 		}
 	}
 }
-
-
