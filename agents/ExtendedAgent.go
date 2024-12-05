@@ -21,7 +21,7 @@ type ExtendedAgent struct {
 	Server common.IServer
 	Score  int
 	TeamID uuid.UUID
-	Name int
+	Name   int
 
 	// private
 	LastScore int
@@ -91,7 +91,7 @@ func (mi *ExtendedAgent) SetTrueScore(score int) {
 	mi.Score = score
 }
 
-func (mi *ExtendedAgent) SetName(name int){
+func (mi *ExtendedAgent) SetName(name int) {
 	mi.Name = name
 }
 
@@ -229,7 +229,7 @@ func (mi *ExtendedAgent) GetStatedWithdrawal(instance common.IExtendedAgent) int
 }
 
 func (mi *ExtendedAgent) GetName() int {
-	return mi.Name 
+	return mi.Name
 }
 
 /*
