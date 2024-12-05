@@ -152,7 +152,8 @@ func (mi *MI_256_v1) UpdateStateTurnend() {
 func (mi *MI_256_v1) CalcAOAContibution() int {
 
 	// mi.AoAExpectedContribution = int(0.5 * float64(mi.Score))
-	mi.AoAExpectedContribution = 2
+
+	mi.AoAExpectedContribution = mi.Server.GetTeam(mi.GetID()).TeamAoA.GetExpectedContribution(mi.GetID(), mi.GetTrueScore())
 	fmt.Println(mi.GetID(), " the expected contribution is:", mi.AoAExpectedContribution)
 	mi.isAoAContributionFixed = true
 	return mi.AoAExpectedContribution
@@ -162,7 +163,8 @@ func (mi *MI_256_v1) CalcAOAWithdrawal() int {
 	// common_pool := mi.Server.GetTeam(mi.GetID()).GetCommonPool()
 
 	// mi.AoAExpectedWithdrawal = int(common_pool / (len(mi.Server.GetTeam(mi.GetID()).Agents) + 1))
-	mi.AoAExpectedWithdrawal = 1
+	mi.AoAExpectedWithdrawal = mi.Server.GetTeam(mi.GetID()).TeamAoA.GetExpectedWithdrawal(mi.GetID(), mi.GetTrueScore(), mi.Server.GetTeamCommonPool(mi.GetTeamID()))
+
 	fmt.Println(mi.GetID(), " the expected withdrawal is:", mi.AoAExpectedWithdrawal)
 	mi.isAoAWithdrawalFixed = true
 
@@ -296,8 +298,8 @@ func (mi *MI_256_v1) DecideContribution() int {
 	mood_modifier := float64(1.0 / 100.0 * float64(mi.mood))
 	neutral_mean := (float64(mi.AoAExpectedContribution) / float64(min(mi.Score, 2*mi.AoAExpectedContribution))) //normalize from 0-1
 	//we model evil and good with different standard deviations, with chaotic being high standard deviation,
-	lawful_evil_mean := neutral_mean * 7 / 8
-	neutral_evil_mean := neutral_mean * 3 / 4
+	lawful_evil_mean := neutral_mean * 5 / 8
+	neutral_evil_mean := neutral_mean * 2 / 4
 	neutral_good_mean := (1-neutral_mean)/2 + neutral_mean
 	lawful_good_mean := float64(7.0 / 8)
 	neutral_standard_deviation := float64(1.0 / 12)
@@ -491,7 +493,7 @@ func (mi *MI_256_v1) GetStatedWithdrawal(instance common.IExtendedAgent) int {
 }
 
 // Audit Strategy
-func (mi *MI_256_v1) DecideAudit() map[uuid.UUID]int {
+func (mi *MI_256_v1) BuildVotemap(IsHarmfulIntent bool) map[uuid.UUID]float64 {
 	// you decide who to audit based on your alignment, if there is a cheat happened, and your affinity of other agents, and the net affinity change this round
 	// alignment calculates the likelyhood of you initiating an audit
 	// cheat greatly modifies the likelyhood, if there is cheating detected, then there will be a greater chance of auditing
@@ -504,63 +506,123 @@ func (mi *MI_256_v1) DecideAudit() map[uuid.UUID]int {
 			return audit_percentage - mood_modifier
 		}
 	}
-	auditmap := make(map[uuid.UUID]int)
+	auditmap := make(map[uuid.UUID]float64)
 
 	var abs_neutral_mean, neutral_evil_mean, neutral_good_mean, lawful_good_mean, lawful_evil_mean, lawful_neutral_mean, chaotic_neutral_mean, chaotic_evil_mean, chaotic_good_mean float64
 	var chaotic_neutral_standard_deviation, chaotic_good_standard_deviation, chaotic_evil_standard_deviation, neutral_good_standard_deviation, neutral_evil_standard_deviation, abs_neutral_standard_deviation, lawful_good_standard_deviation, lawful_evil_standard_deviation, lawful_neutral_standard_deviation float64
-	if !(mi.isThereCheatWithdrawal || mi.isThereCheatContribution) { // when no cheating happens
 
-		//we model evil and good with different standard deviations, with chaotic being high standard deviation,
-		abs_neutral_mean = 0.1
-		neutral_evil_mean = 0.15
-		neutral_good_mean = 0.05
+	if IsHarmfulIntent {
 
-		lawful_good_mean = 0.05
-		lawful_evil_mean = 0.1
-		lawful_neutral_mean = 0.075
+		if !(mi.isThereCheatWithdrawal || mi.isThereCheatContribution) { // when no cheating happens
 
-		chaotic_neutral_mean = 0.15
-		chaotic_evil_mean = 0.2
-		chaotic_good_mean = 0.1
+			//we model evil and good with different standard deviations, with chaotic being high standard deviation,
+			abs_neutral_mean = 0.1
+			neutral_evil_mean = 0.15
+			neutral_good_mean = 0.05
 
-		chaotic_neutral_standard_deviation = 0.07
-		chaotic_good_standard_deviation = 0.05
-		chaotic_evil_standard_deviation = 0.1
+			lawful_good_mean = 0.05
+			lawful_evil_mean = 0.1
+			lawful_neutral_mean = 0.075
 
-		neutral_good_standard_deviation = 0.05
-		neutral_evil_standard_deviation = 0.05
-		abs_neutral_standard_deviation = 0.05
+			chaotic_neutral_mean = 0.15
+			chaotic_evil_mean = 0.2
+			chaotic_good_mean = 0.1
 
-		lawful_good_standard_deviation = 0.025
-		lawful_evil_standard_deviation = 0.025
-		lawful_neutral_standard_deviation = 0.025
+			chaotic_neutral_standard_deviation = 0.07
+			chaotic_good_standard_deviation = 0.05
+			chaotic_evil_standard_deviation = 0.1
 
-	} else { // when there is a cheat
-		abs_neutral_mean = 0.5
-		neutral_evil_mean = 0.75
-		neutral_good_mean = 0.25
+			neutral_good_standard_deviation = 0.05
+			neutral_evil_standard_deviation = 0.05
+			abs_neutral_standard_deviation = 0.05
 
-		lawful_good_mean = 0.1
-		lawful_evil_mean = 0.6
-		lawful_neutral_mean = 0.5
+			lawful_good_standard_deviation = 0.025
+			lawful_evil_standard_deviation = 0.025
+			lawful_neutral_standard_deviation = 0.025
 
-		chaotic_neutral_mean = 0.5
-		chaotic_evil_mean = 0.85
-		chaotic_good_mean = 0.25
+		} else { // when there is a cheat
+			abs_neutral_mean = 0.5
+			neutral_evil_mean = 0.75
+			neutral_good_mean = 0.25
 
-		chaotic_neutral_standard_deviation = 0.2
-		chaotic_good_standard_deviation = 0.2
-		chaotic_evil_standard_deviation = 0.15
+			lawful_good_mean = 0.1
+			lawful_evil_mean = 0.6
+			lawful_neutral_mean = 0.5
 
-		neutral_good_standard_deviation = 0.15
-		neutral_evil_standard_deviation = 0.15
-		abs_neutral_standard_deviation = 0.15
+			chaotic_neutral_mean = 0.5
+			chaotic_evil_mean = 0.85
+			chaotic_good_mean = 0.25
 
-		lawful_good_standard_deviation = 0.1
-		lawful_evil_standard_deviation = 0.1
-		lawful_neutral_standard_deviation = 0.1
+			chaotic_neutral_standard_deviation = 0.2
+			chaotic_good_standard_deviation = 0.2
+			chaotic_evil_standard_deviation = 0.15
 
+			neutral_good_standard_deviation = 0.15
+			neutral_evil_standard_deviation = 0.15
+			abs_neutral_standard_deviation = 0.15
+
+			lawful_good_standard_deviation = 0.1
+			lawful_evil_standard_deviation = 0.1
+			lawful_neutral_standard_deviation = 0.1
+
+		}
+	} else {
+		// if this vote is to help them rank up, get more resource and etc.
+		if !(mi.isThereCheatWithdrawal || mi.isThereCheatContribution) { // when no cheating happens
+
+			//we model evil and good with different standard deviations, with chaotic being high standard deviation,
+			abs_neutral_mean = 0.4
+			neutral_evil_mean = 0.15
+			neutral_good_mean = 0.4
+
+			lawful_good_mean = 0.8
+			lawful_evil_mean = 0.2
+			lawful_neutral_mean = 0.4
+
+			chaotic_neutral_mean = 0.4
+			chaotic_evil_mean = 0.15
+			chaotic_good_mean = 0.8
+
+			chaotic_neutral_standard_deviation = 0.2
+			chaotic_good_standard_deviation = 0.2
+			chaotic_evil_standard_deviation = 0.2
+
+			neutral_good_standard_deviation = 0.1
+			neutral_evil_standard_deviation = 0.1
+			abs_neutral_standard_deviation = 0.1
+
+			lawful_good_standard_deviation = 0.05
+			lawful_evil_standard_deviation = 0.05
+			lawful_neutral_standard_deviation = 0.05
+
+		} else { // when there is a cheat
+			abs_neutral_mean = 0.25
+			neutral_evil_mean = 0.1
+			neutral_good_mean = 0.4
+
+			lawful_good_mean = 0.5
+			lawful_evil_mean = 0.1
+			lawful_neutral_mean = 0.25
+
+			chaotic_neutral_mean = 0.25
+			chaotic_evil_mean = 0.1
+			chaotic_good_mean = 0.4
+
+			chaotic_neutral_standard_deviation = 0.2
+			chaotic_good_standard_deviation = 0.2
+			chaotic_evil_standard_deviation = 0.2
+
+			neutral_good_standard_deviation = 0.1
+			neutral_evil_standard_deviation = 0.1
+			abs_neutral_standard_deviation = 0.1
+
+			lawful_good_standard_deviation = 0.05
+			lawful_evil_standard_deviation = 0.05
+			lawful_neutral_standard_deviation = 0.05
+
+		}
 	}
+
 	for _, agent := range mi.Server.GetTeam(mi.GetID()).Agents {
 		audit_percentage := 0.0
 
@@ -605,7 +667,7 @@ func (mi *MI_256_v1) DecideAudit() map[uuid.UUID]int {
 			}
 		}
 		// we apply affinity, it will shift the mean(just the percentage) based on the affinity of that agnet
-		affinity_modifier := 0.05
+		affinity_modifier := 0.03
 		ignore_thresh := 10
 		if mi.affinity[agent] > ignore_thresh {
 			audit_percentage -= math.Sqrt(float64(mi.affinity[agent]-10)) * affinity_modifier
@@ -614,26 +676,15 @@ func (mi *MI_256_v1) DecideAudit() map[uuid.UUID]int {
 		}
 
 		Apply_mood(audit_percentage, abs_neutral_mean)
-		random := rand.Float64()
-		if random <= audit_percentage {
-			auditmap[agent] = 1
-		} else if random >= audit_percentage+(1-audit_percentage)/3 {
-			auditmap[agent] = -1
-		} else {
-			// if in this range, abstain
-			auditmap[agent] = 0
-		}
+		auditmap[agent] = audit_percentage
 
 	}
-	// var worstAgent uuid.UUID // the agent that you would vote for
-	// for agent, vote := range auditmap {
-	// 	// audit the
-	// }
 
-	// this need to be refined because I don't think this is ever called.
 	return auditmap
+
 }
-func (mi *MI_256_v1) DecideVote() bool {
+
+func (mi *MI_256_v1) GetWithdrawalAuditVote() common.Vote {
 	/*vote happens at many occasions:
 
 	when approving to rank up
@@ -641,19 +692,75 @@ func (mi *MI_256_v1) DecideVote() bool {
 	voting for a leader(maybe)
 	voting for a AoA
 	voting for audition
-
-
-
 	*/
 	// TODO: implement vote strategy
-	var AgentVotingOn uuid.UUID
-	if mi.affinity[AgentVotingOn] > 10 {
-		return true
-	} else {
-		return false
+	votemap := mi.BuildVotemap(true)
+	var max_agent uuid.UUID
+	max_audit_perentage := 0.0
+	for agent, audit_percentage := range votemap {
+		if audit_percentage > float64(max_audit_perentage) {
+			max_agent = agent
+			max_audit_perentage = audit_percentage
+		}
 	}
 
-	return true
+	random := rand.Float64()
+	if random <= max_audit_perentage {
+		return common.CreateVote(1, mi.GetID(), max_agent)
+
+	} else if random >= max_audit_perentage+(1-max_audit_perentage)/2 {
+		return common.CreateVote(-1, mi.GetID(), max_agent)
+	} else {
+		// if in this range, abstain
+		return common.CreateVote(0, mi.GetID(), max_agent)
+	}
+
+}
+
+func (mi *MI_256_v1) Team4_GetRankUpVote() map[uuid.UUID]int {
+	// log.Printf("Called overriden GetRankUpVote()")
+	votePercentmap := mi.BuildVotemap(false)
+	votemap := make(map[uuid.UUID]int)
+	for agent, percentage := range votePercentmap {
+		random := rand.Float64()
+		if random <= percentage {
+			votemap[agent] = 1
+		} else if random >= percentage+(1-percentage)/2 {
+			votemap[agent] = -1
+		} else {
+			votemap[agent] = 0
+			// if in this range, abstain
+
+		}
+	}
+	return votemap
+}
+
+func (mi *MI_256_v1) Team4_GetConfession() bool {
+	chance := rand.Intn(2)
+	if chance != 0 {
+		return true
+	}
+	return false
+}
+
+func (mi *MI_256_v1) Team4_GetProposedWithdrawalVote() map[uuid.UUID]int {
+	// log.Printf("Called overriden GetProposedWithdrawalVote()")
+	votePercentmap := mi.BuildVotemap(false)
+	votemap := make(map[uuid.UUID]int)
+	for agent, percentage := range votePercentmap {
+		random := rand.Float64()
+		if random <= percentage {
+			votemap[agent] = 1
+		} else if random >= percentage+(1-percentage)/2 {
+			votemap[agent] = -1
+		} else {
+			votemap[agent] = 0
+			// if in this range, abstain
+
+		}
+	}
+	return votemap
 }
 
 // ----------------------- State Helpers -----------------------
@@ -981,4 +1088,13 @@ func (mi *MI_256_v1) UpdateAffinityAfterAudit() {
 // ----------------------- Helper Functions -----------------------
 func GetAgentTeamAoA(mi *MI_256_v1) common.IArticlesOfAssociation {
 	return mi.Server.GetTeam(mi.GetID()).TeamAoA
+}
+
+func (mi *MI_256_v1) Team4_ProposeWithdrawal() int {
+	// first check if the agent has a team
+	if !mi.HasTeam() {
+		return 0
+	}
+	mi.DecideWithdrawal()
+	return mi.IntendedWithdrawal
 }
