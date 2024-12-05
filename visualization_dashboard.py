@@ -260,16 +260,22 @@ def update_agent_status(iteration):
     
     fig = go.Figure()
     
+    # Safely get alive counts (True), defaulting to 0 if not present
+    alive_counts = status_counts[True] if True in status_counts.columns else pd.Series(0, index=status_counts.index)
+    
+    # Safely get dead counts (False), defaulting to 0 if not present
+    dead_counts = status_counts[False] if False in status_counts.columns else pd.Series(0, index=status_counts.index)
+    
     fig.add_trace(go.Bar(
         x=status_counts.index,
-        y=status_counts[True],
+        y=alive_counts,
         name='Alive',
         marker_color='green'
     ))
     
     fig.add_trace(go.Bar(
         x=status_counts.index,
-        y=status_counts[False],
+        y=dead_counts,
         name='Dead',
         marker_color='red'
     ))
