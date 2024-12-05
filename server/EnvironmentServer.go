@@ -329,6 +329,10 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 	// defer cs.teamsMutex.Unlock()
 
 	for _, team := range cs.Teams {
+		if len(team.Agents) == 0 {
+			fmt.Printf("No agents in team: %s\n", team.TeamID)
+			continue
+		}
 		teamAoA := reflect.TypeOf(team.TeamAoA)
 		switch teamAoA {
 		case reflect.TypeOf(&common.Team4AoA{}):
