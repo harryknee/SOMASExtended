@@ -3,6 +3,7 @@ package agents
 import (
 	"log"
 	"math/rand"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -50,12 +51,21 @@ type AgentConfig struct {
 }
 
 func GetBaseAgents(funcs agent.IExposedServerFunctions[common.IExtendedAgent], configParam AgentConfig) *ExtendedAgent {
+	aoaRanking := []int{1, 2, 3, 4, 5, 6}
+
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	// Shuffle the slice to create a random order.
+	rng.Shuffle(len(aoaRanking), func(i, j int) {
+		aoaRanking[i], aoaRanking[j] = aoaRanking[j], aoaRanking[i]
+	})
+
 	return &ExtendedAgent{
 		BaseAgent:    agent.CreateBaseAgent(funcs),
 		Server:       funcs.(common.IServer), // Type assert the server functions to IServer interface
 		Score:        configParam.InitScore,
 		VerboseLevel: configParam.VerboseLevel,
-		AoARanking:   []int{4, 1, 2, 3, 5, 6},
+		AoARanking:   aoaRanking,
 		TeamRanking:  []uuid.UUID{},
 	}
 }
