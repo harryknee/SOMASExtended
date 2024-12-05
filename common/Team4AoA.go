@@ -394,6 +394,6 @@ func (t *Team4AoA) RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IE
 
 }
 
-func (t *Team4AoA) GetPunishment(agentScore int) int {
+func (t *Team4AoA) GetPunishment(agentScore int, agentId uuid.UUID) int {
 	return (agentScore * 25) / 100
 }

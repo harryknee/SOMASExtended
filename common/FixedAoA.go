@@ -87,7 +87,7 @@ func (t *FixedAoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
 	return shuffledAgents
 }
 
-func (t *FixedAoA) GetPunishment(agentScore int) int {
+func (t *FixedAoA) GetPunishment(agentScore int, agentId uuid.UUID) int {
 	return (agentScore * 25) / 100
 }
 

@@ -1048,7 +1048,7 @@ func (cs *EnvironmentServer) ApplyPunishment(team *common.Team, agentToAudit uui
 	agent := cs.GetAgentMap()[agentToAudit]
 	agentScore := agent.GetTrueScore()
 
-	punishmentResult := team.TeamAoA.GetPunishment(agentScore)
+	punishmentResult := team.TeamAoA.GetPunishment(agentScore, agentToAudit)
 	log.Printf("Punishment Result for Agent %v: %d (Agent Score: %d)\n", agent.GetID(), punishmentResult, agentScore)
 
 	newScore := agentScore - punishmentResult

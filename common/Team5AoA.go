@@ -299,6 +299,6 @@ func (t *Team5AOA) Team4_HandlePunishmentVote(map[uuid.UUID]map[int]int) int {
 	return 0
 }
 
-func (t *Team5AOA) GetPunishment(agentScore int) int {
+func (t *Team5AOA) GetPunishment(agentScore int, agentId uuid.UUID) int {
 	return (agentScore * 25) / 100
 }

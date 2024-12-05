@@ -377,7 +377,7 @@ func (f *Team1AoA) ResourceAllocation(agentScores map[uuid.UUID]int, remainingRe
 	return make(map[uuid.UUID]int)
 }
 
-func (t *Team1AoA) GetPunishment(agentScore int) int {
+func (t *Team1AoA) GetPunishment(agentScore int, agentId uuid.UUID) int {
 	return (agentScore * 25) / 100
 }
 

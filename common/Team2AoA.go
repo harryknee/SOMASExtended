@@ -209,7 +209,7 @@ func (t *Team2AoA) GetOffenders(numOffences int) []uuid.UUID {
 	return offenders
 }
 
-func (t *Team2AoA) GetPunishment(agentScore int) int {
+func (t *Team2AoA) GetPunishment(agentScore int, agentId uuid.UUID) int {
 	return (agentScore * 25) / 100
 }
 
