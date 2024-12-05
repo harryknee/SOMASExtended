@@ -10,7 +10,7 @@ import (
 * part of a team. This maps agentID -> slice of teamIDs that agent wants to
 * join. Note that the slice of teams is processed in order, so the agent should
 * put the team it most wants to join at the start of the slice. */
-type OrphanPoolType map[uuid.UUID][]uuid.UUID
+type OrphanPoolType map[uuid.UUID]struct{}
 
 // The percentage of agents that have to vote 'accept' in order for an orphan
 // to be taken into a team
@@ -64,30 +64,40 @@ func (cs *EnvironmentServer) AllocateOrphans() {
 	unallocated := make(OrphanPoolType)
 
 	// for each orphan currently in the pool / shelter
-	for orphanID, teamsList := range cs.orphanPool {
+	for orphanID := range cs.orphanPool {
 		log.Printf("allocating %v\n", orphanID)
 		var accepted = false
-		// for each team that orphan wants to join
-		for _, teamID := range teamsList {
-			log.Printf("team id testing is %v\n", teamID)
-			// Skip if already accepted into a team
-			if accepted {
-				break
-			}
+		var acceptedTeamID = uuid.Nil
 
-			// Otherwise attempt to join the team
-			accepted = cs.RequestOrphanEntry(orphanID, teamID, MajorityVoteThreshold)
-			// If the team has voted to accept the orphan
-			if accepted {
-				agent_map[orphanID].SetTeamID(teamID) // Update agent's knowledge of its team
-				cs.AddAgentToTeam(orphanID, teamID)   // Update team's knowledge of its agents
-				log.Printf("%v accepted by team %v !!\n", orphanID, teamID)
+		// Check each aoa preference and try to allocate to allocate to team with that AoA
+		agent := agent_map[orphanID]
+		aoaRanking := agent.GetAoARanking()
+		if len(aoaRanking) != 0 {
+			log.Printf("orphan %v has no team preferences checking AoA ranking\n", orphanID)
+			// In preference order of AoA iterate through the teams and try to allocate
+			for _, aoa := range aoaRanking {
+				if accepted {
+					break
+				}
+				for _, team := range cs.GetTeamsByAoA(aoa) {
+					log.Printf("testing team %v\n", team.TeamID)
+					accepted = cs.RequestOrphanEntry(orphanID, team.TeamID, MajorityVoteThreshold)
+					if accepted {
+						acceptedTeamID = team.TeamID
+						break
+					}
+				}
 			}
-			// Otherwise, continue to the next team in the preference list.
+		} else {
+			log.Printf("orphan %v has no AoA preferences and no team preference remains in orphan pool\n", orphanID)
 		}
 
-		if !accepted {
-			unallocated[orphanID] = teamsList // add to unallocated
+		if (accepted) && (acceptedTeamID != uuid.Nil) {
+			agent_map[orphanID].SetTeamID(acceptedTeamID) // Update agent's knowledge of its team
+			cs.AddAgentToTeam(orphanID, acceptedTeamID)   // Update team's knowledge of its agents
+			log.Printf("%v accepted by team %v !!\n", orphanID, acceptedTeamID)
+		} else {
+			unallocated[orphanID] = struct{}{}
 			log.Printf("%v remains in the orphan pool after allocation...\n", orphanID)
 		}
 	}
@@ -127,13 +137,9 @@ func (cs *EnvironmentServer) PickUpOrphans() {
 			// them to be able to update their preferences on which teams they
 			// would like to join
 			log.Printf("testing %v\n", agentID)
-			cs.orphanPool[agentID] = agent.GetTeamRanking()
-
-			for _, x := range cs.orphanPool[agentID] {
-				log.Printf("wants to join %v\n", x)
-			}
 
 			if !exists {
+				cs.orphanPool[agentID] = struct{}{}
 				log.Printf("%v was added to the orphan pool \n", agentID)
 			}
 		}
