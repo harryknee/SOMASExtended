@@ -1132,8 +1132,8 @@ func (cs *EnvironmentServer) ProcessAgentsLeaving() {
 
 func (cs *EnvironmentServer) ApplyPunishment(team *common.Team, agentToAudit uuid.UUID) {
 	agent := cs.GetAgentMap()[agentToAudit]
-	
-	if agent.HasTeam(){
+
+	if agent.HasTeam() {
 		agentScore := agent.GetTrueScore()
 		punishmentResult := team.TeamAoA.GetPunishment(agentScore, agentToAudit)
 		log.Printf("Punishment Result for Agent %v: %d (Agent Score: %d)\n", agent.GetID(), punishmentResult, agentScore)
