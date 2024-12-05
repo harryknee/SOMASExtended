@@ -170,7 +170,7 @@ func (mi *ExtendedAgent) team1_VoteOnRankBoundaries(cands [3][5]int) [5]int {
 	for i := 0; i < 3; i++ {
 		winner := true
 		for j := 0; j < 3; j++ {
-			if i != j && pairwise[i][j] <= pairwise[i][j] {
+			if i != j && pairwise[i][j] <= pairwise[j][i] {
 				winner = false
 				break
 			}
