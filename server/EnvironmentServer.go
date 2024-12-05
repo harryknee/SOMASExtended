@@ -333,7 +333,7 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 
 	for _, team := range cs.Teams {
 		if len(team.Agents) == 0 {
-			fmt.Printf("No agents in team: %s\n", team.TeamID)
+			log.Printf("No agents in team: %s\n", team.TeamID)
 			continue
 		}
 		teamAoA := reflect.TypeOf(team.TeamAoA)
@@ -951,7 +951,7 @@ func (cs *EnvironmentServer) RecordTurnInfo() {
 }
 
 func (cs *EnvironmentServer) RunTurnTeam5(team *common.Team) {
-	fmt.Println("\nRunning turn for team ", team.TeamID)
+	log.Println("\nRunning turn for team ", team.TeamID)
 
 	// Sum of contributions from all agents in the team for this turn
 	agentContributionsTotal := 0
@@ -989,7 +989,7 @@ func (cs *EnvironmentServer) RunTurnTeam5(team *common.Team) {
 		if auditCost <= team.GetCommonPool() {
 			// Deduct the audit cost from the common pool
 			team.SetCommonPool(team.GetCommonPool() - auditCost)
-			fmt.Printf("[server] Audit cost of %v deducted from the common pool. Remaining pool: %v\n", auditCost, team.GetCommonPool())
+			log.Printf("[server] Audit cost of %v deducted from the common pool. Remaining pool: %v\n", auditCost, team.GetCommonPool())
 
 			// Proceed with the audit
 			auditResult := team.TeamAoA.GetContributionAuditResult(agentToAudit)
@@ -998,7 +998,7 @@ func (cs *EnvironmentServer) RunTurnTeam5(team *common.Team) {
 				agent.SetAgentContributionAuditResult(agentToAudit, auditResult)
 			}
 		} else {
-			fmt.Printf("[server] Not enough resources in the common pool to cover the audit cost. Skipping audit.\n")
+			log.Printf("[server] Not enough resources in the common pool to cover the audit cost. Skipping audit.\n")
 		}
 	}
 
@@ -1028,7 +1028,7 @@ func (cs *EnvironmentServer) RunTurnTeam5(team *common.Team) {
 		// Update agent score and common pool
 		agent.SetTrueScore(agentScore + agentActualWithdrawal)
 		team.SetCommonPool(currentPool - agentActualWithdrawal)
-		fmt.Printf("[server] Agent %v withdrew %v. Remaining pool: %v\n", agentID, agentActualWithdrawal, team.GetCommonPool())
+		log.Printf("[server] Agent %v withdrew %v. Remaining pool: %v\n", agentID, agentActualWithdrawal, team.GetCommonPool())
 	}
 
 	// Initiate Withdrawal Audit vote
@@ -1045,7 +1045,7 @@ func (cs *EnvironmentServer) RunTurnTeam5(team *common.Team) {
 		if auditCost <= team.GetCommonPool() {
 			// Deduct the audit cost from the common pool
 			team.SetCommonPool(team.GetCommonPool() - auditCost)
-			fmt.Printf("[server] Withdrawal audit cost of %v deducted from the common pool. Remaining pool: %v\n", auditCost, team.GetCommonPool())
+			log.Printf("[server] Withdrawal audit cost of %v deducted from the common pool. Remaining pool: %v\n", auditCost, team.GetCommonPool())
 
 			// Proceed with the audit
 			auditResult := team.TeamAoA.GetWithdrawalAuditResult(agentToAudit)
@@ -1054,7 +1054,7 @@ func (cs *EnvironmentServer) RunTurnTeam5(team *common.Team) {
 				agent.SetAgentWithdrawalAuditResult(agentToAudit, auditResult)
 			}
 		} else {
-			fmt.Printf("[server] Not enough resources in the common pool to cover the audit cost. Skipping withdrawal audit.\n")
+			log.Printf("[server] Not enough resources in the common pool to cover the audit cost. Skipping withdrawal audit.\n")
 		}
 	}
 }

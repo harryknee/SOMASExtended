@@ -1,7 +1,6 @@
 package agents
 
 import (
-	"fmt"
 	"log"
 	"math/rand"
 
@@ -91,7 +90,7 @@ func (mi *MI_256_v1) Team4_GetRankUpVote() map[uuid.UUID]int {
 		rankUpVote[agentId] = rand.Intn(2)
 	}
 
-	fmt.Println(rankUpVote)
+	log.Println(rankUpVote)
 	return rankUpVote
 }
 
@@ -108,7 +107,7 @@ func (mi *MI_256_v1) Team4_GetProposedWithdrawalVote() map[uuid.UUID]int {
 		proposedWithdrawals[agentId] = rand.Intn(2)
 	}
 
-	fmt.Println(proposedWithdrawals)
+	log.Println(proposedWithdrawals)
 	return proposedWithdrawals
 }
 
