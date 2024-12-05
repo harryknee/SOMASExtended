@@ -359,6 +359,9 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 		cs.thresholdAppliedInTurn = false // record data
 	}
 
+	// Only living agents can leave their team
+	cs.ProcessAgentsLeaving()
+
 	// do not record if the turn number is 0
 	if cs.turn > 0 {
 		cs.RecordTurnInfo()
@@ -1042,6 +1045,39 @@ func (cs *EnvironmentServer) GetAgentScores() map[uuid.UUID]int {
 		agentScores[agent.GetID()] = agent.GetTrueScore()
 	}
 	return agentScores
+}
+
+// In case an AoA requires agents to be kicked
+func (cs *EnvironmentServer) RemoveAgentFromTeam(agentID uuid.UUID) {
+
+	// If the agent is already dead it can't really be kicked
+	if cs.IsAgentDead(agentID) {
+		log.Printf("[WARNING] Dead agent should not be being kicked: %s", agentID)
+		return
+	}
+
+	// GetTeam() is a misleading name, but this gets the team the agent is in, as well as the agent itself
+	team, agent := cs.GetTeam(agentID), cs.GetAgentMap()[agentID]
+
+	// Set the current agent's team ID back to the default after it has been used to get the team structure
+	agent.SetTeamID(uuid.UUID{})
+
+	// Safety check to confirm that the team actually exists
+	if team == nil {
+		log.Printf("[WARNING] Agent being kicked does not have a team!! AgentID: %s", agentID)
+		return
+	}
+
+	team.RemoveAgent(agentID)
+}
+
+// Ask all the agents if they want to leave the team they are in or not. Ignore dead agents
+func (cs *EnvironmentServer) ProcessAgentsLeaving() {
+	for agentID, agent := range cs.GetAgentMap() {
+		if !cs.IsAgentDead(agentID) && agent.GetLeaveOpinion(agentID) {
+			cs.RemoveAgentFromTeam(agentID)
+		}
+	}
 }
 
 func (cs *EnvironmentServer) ApplyPunishment(team *common.Team, agentToAudit uuid.UUID) {

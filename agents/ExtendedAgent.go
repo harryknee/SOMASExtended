@@ -243,6 +243,20 @@ func (mi *ExtendedAgent) GetName() int {
 }
 
 /*
+ * Ask an agent if it wants to leave or not. "Opinion" because there
+ * should be logic on the server to prevent agents from leaving if they
+ * are currently being punished as a result of an audit.
+ */
+func (mi *ExtendedAgent) GetLeaveOpinion(agentID uuid.UUID) bool {
+	// Recursion block
+	if mi.GetID() == agentID {
+		return false
+	}
+	// Get the underlying agent's opinion
+	return mi.Server.AccessAgentByID(agentID).GetLeaveOpinion(mi.GetID())
+}
+
+/*
 Provide agentId for memory, current accumulated score
 (to see if above or below predicted threshold for common pool contribution)
 And previous roll in case relevant
