@@ -586,6 +586,7 @@ func (mi *ExtendedAgent) RecordAgentStatus(instance common.IExtendedAgent) gameR
 		instance.GetActualWithdrawal(instance),
 		instance.GetStatedWithdrawal(instance),
 		instance.GetTeamID(),
+		"1",
 	)
 	return record
 }
