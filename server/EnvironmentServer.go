@@ -633,7 +633,7 @@ func (cs *EnvironmentServer) LogAgentStatus() {
 * print the elements in the order that you added them.
  */
 func (cs *EnvironmentServer) PrintOrphanPool() {
-	for i, _ := range cs.orphanPool {
+	for i := range cs.orphanPool {
 		// truncate the UUIDs to make it easier to read
 		shortAgentId := i.String()[:8]
 
