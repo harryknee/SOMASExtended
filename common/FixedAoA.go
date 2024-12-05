@@ -1,9 +1,10 @@
 package common
 
 import (
-	"github.com/google/uuid"
 	"math/rand"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type FixedAoA struct {
@@ -56,6 +57,17 @@ func (f *FixedAoA) GetAuditCost(commonPool int) int {
 // Otherwise, implement a voting mechanism to determine the agent to be audited
 // and return its UUID
 func (f *FixedAoA) GetVoteResult(votes []Vote) uuid.UUID {
+	if len(votes) == 0 {
+		return uuid.Nil
+	}
+
+	duration := 0
+	for _, vote := range votes {
+		duration += vote.AuditDuration
+	}
+	duration /= len(votes)
+
+	f.auditRecord.SetAuditDuration(duration)
 	return uuid.Nil
 }
 
@@ -75,9 +87,25 @@ func (t *FixedAoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
 	return shuffledAgents
 }
 
+func (t *FixedAoA) RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent)     {}
+func (t *FixedAoA) RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {}
+
+func (f *FixedAoA) ResourceAllocation(agentScores map[uuid.UUID]int, remainingResources int) map[uuid.UUID]int {
+	return make(map[uuid.UUID]int)
+}
+
 func CreateFixedAoA(duration int) IArticlesOfAssociation {
 	auditRecord := NewAuditRecord(duration)
 	return &FixedAoA{
 		auditRecord: auditRecord,
 	}
+}
+
+// Do nothing
+func (t *FixedAoA) Team4_SetRankUp(rankUpVoteMap map[uuid.UUID]map[uuid.UUID]int) {
+}
+func (t *FixedAoA) Team4_RunProposedWithdrawalVote(map[uuid.UUID]int, map[uuid.UUID]map[uuid.UUID]int) {
+}
+func (t *FixedAoA) Team4_HandlePunishmentVote(map[uuid.UUID]map[int]int) int {
+	return 0
 }

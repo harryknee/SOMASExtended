@@ -1,120 +1,165 @@
 package common
 
-// import "github.com/google/uuid"
 import (
-	"container/list"
+	"log"
+	"math"
 	"math/rand"
-	"time"
 
 	"github.com/google/uuid"
 )
 
-type AuditQueue struct {
-	length int
-	rounds list.List
-}
+// Warning -> Implicit to the AoA, not formalized until a successful audit
+// Offence -> Formalized warning, 3 offences result in a kick
+// Need to formalize the first offence punishment -> Server needs to enforce this.
 
-func NewAuditQueue(length int) *AuditQueue {
-	return &AuditQueue{
-		length: length,
-		rounds: list.List{},
-	}
-}
+/*
+ * TODO:
+ * - Write some tests for the audit functionality here
+ * - Implement the functionality on the server to work with this (so with offences)
+ * - Implement the kick functionality on the server
+ * - Make sure that if the leader dies, or is audited, they have to be re-elected
+ */
 
-func (aq *AuditQueue) AddToQueue(auditResult bool) {
-	if aq.length == aq.rounds.Len() {
-		aq.rounds.Remove(aq.rounds.Front())
-	}
-	aq.rounds.PushBack(auditResult)
-}
-
-func (aq *AuditQueue) GetWarnings() int {
-	warnings := 0
-	for e := aq.rounds.Front(); e != nil; e = e.Next() {
-		warnings += e.Value.(int)
-	}
-	return warnings
-}
+// ---------------------------------------- Articles of Association Functionality ----------------------------------------
 
 type Team2AoA struct {
-	AuditMap   map[uuid.UUID]*AuditQueue
+	auditRecord *AuditRecord
+	// Used by the server in order to track which agents need to be kicked/fined/rolling privileges revoked
 	OffenceMap map[uuid.UUID]int
 	Leader     uuid.UUID
-}
-
-func (t *Team2AoA) ResetAuditMap() {
-	t.AuditMap = make(map[uuid.UUID]*AuditQueue)
+	Team       *Team
 }
 
 func (t *Team2AoA) GetExpectedContribution(agentId uuid.UUID, agentScore int) int {
 	return agentScore
 }
 
-// TODO: Team2 to implement the actual functionality
+// Probably not very relevant, the punishment is levied based on offences committed and is enforced by the server
+func (t *Team2AoA) GetAuditResult(agentId uuid.UUID) bool {
+	// Only deduct from the common pool for a successful audit
+	warnings := t.auditRecord.GetAllInfractions(agentId)
+	offences := t.OffenceMap[agentId]
+	offences += warnings
+
+	if offences > 3 {
+		offences = 3
+	}
+
+	t.OffenceMap[agentId] = offences
+
+	// Reset the audit queue after an audit to prevent double counting of offences
+	// TODO: If probabilistic auditing is implemented, this should be removed
+	t.auditRecord.ClearAllInfractions(agentId)
+
+	return offences > 0
+}
+
 func (t *Team2AoA) GetContributionAuditResult(agentId uuid.UUID) bool {
-	return false
+	return t.GetAuditResult(agentId)
 }
 
 func (t *Team2AoA) SetContributionAuditResult(agentId uuid.UUID, agentScore int, agentActualContribution int, agentStatedContribution int) {
-	// ignore agentStatedContribution
-	// check if agent actually contributed it's entire score
-	if t.AuditMap[agentId] == nil {
-		t.AuditMap[agentId] = NewAuditQueue(5)
+	var infraction int
+	if agentActualContribution != agentStatedContribution {
+		infraction = 1
+	} else {
+		infraction = 0
 	}
-	t.AuditMap[agentId].AddToQueue(agentActualContribution != agentScore)
+
+	t.auditRecord.AddRecord(agentId, infraction)
 }
 
 func (t *Team2AoA) GetWithdrawalAuditResult(agentId uuid.UUID) bool {
-	return false
+	return t.GetAuditResult(agentId)
 }
 
 func (t *Team2AoA) GetExpectedWithdrawal(agentId uuid.UUID, agentScore int, commonPool int) int {
-	if agentId == t.Leader {
-		return int(float64(agentScore) * 0.25)
+	// Get the precomputed withdrawal map
+	expectedWithdrawals := t.mapExpectedWithdrawal()
+	if amount, exists := expectedWithdrawals[agentId]; exists {
+		return amount
 	}
-	return int(float64(agentScore) * 0.10)
+	return 0
+}
+
+func (t *Team2AoA) mapExpectedWithdrawal() map[uuid.UUID]int {
+	team := t.Team
+	commonPool := team.GetCommonPool()
+	count := len(team.Agents)
+
+	reserved := float64(commonPool) * 0.15 // 15% reserved from the common pool
+	availablePool := float64(commonPool) - reserved
+
+	// Calculate the multipliers
+	leaderMultiplier := 2.0
+	totalMultiplier := leaderMultiplier + (float64(count - 1))
+	multForLeader := (availablePool * leaderMultiplier) / totalMultiplier
+	multForCitizen := (availablePool) / totalMultiplier
+
+	expectedWithdrawals := make(map[uuid.UUID]int)
+	for _, agentId := range team.Agents {
+		if agentId == t.Leader {
+			expectedWithdrawals[agentId] = int(multForLeader)
+		} else {
+			expectedWithdrawals[agentId] = int(multForCitizen)
+		}
+	}
+	return expectedWithdrawals
 }
 
 func (t *Team2AoA) SetWithdrawalAuditResult(agentId uuid.UUID, agentScore int, agentActualWithdrawal int, agentStatedWithdrawal int, commonPool int) {
-	if t.AuditMap[agentId] == nil {
-		t.AuditMap[agentId] = NewAuditQueue(5)
-	}
+	multiplier := 0.10
 	if agentId == t.Leader {
-		t.AuditMap[agentId].AddToQueue(float64(agentScore)*0.25 != float64(agentActualWithdrawal))
-	} else {
-		t.AuditMap[agentId].AddToQueue(float64(agentScore)*0.10 != float64(agentActualWithdrawal))
+		multiplier = 0.25
+	}
+	const epsilon = 1e-9 // Define a small threshold
+	expectedWithdrawal := float64(agentScore) * multiplier
+	actualWithdrawal := float64(agentActualWithdrawal)
+
+	// Compare using epsilon to handle floating-point inaccuracies
+	infraction := math.Abs(expectedWithdrawal-actualWithdrawal) > epsilon
+
+	if infraction && t.auditRecord.GetLastRecord(agentId) == 0 {
+		t.auditRecord.IncrementLastRecord(agentId)
 	}
 }
 
 func (t *Team2AoA) GetAuditCost(commonPool int) int {
-	if commonPool < 5 {
-		return 2
-	}
-	return 5 + ((commonPool - 5) / 5)
+	return t.auditRecord.GetAuditCost()
 }
 
+// TODO: Implement a borda vote here instead?
 func (t *Team2AoA) GetVoteResult(votes []Vote) uuid.UUID {
+	if len(votes) == 0 {
+		return uuid.Nil
+	}
 	voteMap := make(map[uuid.UUID]int)
+	duration := 0
+	count := len(t.Team.Agents)
 	for _, vote := range votes {
-		if vote.IsVote == 1 {
-			if vote.VoterID == t.Leader {
-				voteMap[vote.VotedForID] += 2
-			} else {
-				voteMap[vote.VotedForID]++
-			}
+		durationVote, agentVotedFor := vote.AuditDuration, vote.VotedForID
+		votes := 1
+		if vote.VotedForID == t.Leader {
+			durationVote = durationVote * 2
+			votes = 2
 		}
-		if voteMap[vote.VotedForID] > 4 {
-			return vote.VotedForID
+		if vote.IsVote == 1 {
+			voteMap[agentVotedFor] += votes
+		}
+		duration += durationVote
+	}
+	duration /= len(votes)
+	t.auditRecord.SetAuditDuration(duration)
+	for votedFor, votes := range voteMap {
+		if votes >= ((count / 2) + 1) {
+			return votedFor
 		}
 	}
-	return uuid.Nil // Explicitly return uuid.Nil for "no result"
+	return uuid.Nil
 }
 
 func (t *Team2AoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
-	// Seed the random number generator to ensure different shuffles each time
-	rand.NewSource(time.Now().UnixNano())
-
-	// Create a copy of the agentIDs to avoid modifying the original list
+	// Create a copy of agentIDs to avoid modifying the original slice
 	shuffledAgents := make([]uuid.UUID, len(agentIDs))
 	copy(shuffledAgents, agentIDs)
 
@@ -123,14 +168,73 @@ func (t *Team2AoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
 		shuffledAgents[i], shuffledAgents[j] = shuffledAgents[j], shuffledAgents[i]
 	})
 
-	return shuffledAgents
+	withdrawalOrder := make([]uuid.UUID, 0, len(agentIDs))
+
+	// Add the leader ID to the first position
+	withdrawalOrder = append(withdrawalOrder, t.Leader)
+
+	// Append all other IDs, excluding the leader
+	for _, agentID := range shuffledAgents {
+		if agentID != t.Leader {
+			withdrawalOrder = append(withdrawalOrder, agentID)
+		}
+	}
+
+	return withdrawalOrder
 }
 
-func (t *Team2AoA) RunAoAStuff() {}
+func (t *Team2AoA) RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent)     {}
+func (t *Team2AoA) RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {}
 
-func CreateTeam2AoA(auditDuration int) IArticlesOfAssociation {
-	return &Team2AoA{
-		AuditMap:   make(map[uuid.UUID]*AuditQueue),
-		OffenceMap: make(map[uuid.UUID]int),
+func (f *Team2AoA) ResourceAllocation(agentScores map[uuid.UUID]int, remainingResources int) map[uuid.UUID]int {
+	return make(map[uuid.UUID]int)
+}
+
+func (t *Team2AoA) SetLeader(leader uuid.UUID) {
+	t.Leader = leader
+}
+
+func (t *Team2AoA) GetLeader() uuid.UUID {
+	return t.Leader
+}
+
+// After the AoA stuff has been run, the server can use this to determine what punishment to impose
+func (t *Team2AoA) GetOffenders(numOffences int) []uuid.UUID {
+	offenders := make([]uuid.UUID, 0)
+	for agentId, offences := range t.OffenceMap {
+		if offences == numOffences {
+			offenders = append(offenders, agentId)
+		}
 	}
+	return offenders
+}
+
+func CreateTeam2AoA(team *Team, leader uuid.UUID, auditDuration int) IArticlesOfAssociation {
+	log.Println("Creating Team2AoA")
+	offenceMap := make(map[uuid.UUID]int)
+
+	if leader == uuid.Nil {
+		shuffledAgents := make([]uuid.UUID, len(team.Agents))
+		copy(shuffledAgents, team.Agents)
+		rand.Shuffle(len(shuffledAgents), func(i, j int) {
+			shuffledAgents[i], shuffledAgents[j] = shuffledAgents[j], shuffledAgents[i]
+		})
+		leader = shuffledAgents[0]
+	}
+
+	return &Team2AoA{
+		auditRecord: NewAuditRecord(auditDuration),
+		OffenceMap:  offenceMap,
+		Leader:      leader,
+		Team:        team,
+	}
+}
+
+// Do nothing
+func (t *Team2AoA) Team4_SetRankUp(rankUpVoteMap map[uuid.UUID]map[uuid.UUID]int) {
+}
+func (t *Team2AoA) Team4_RunProposedWithdrawalVote(map[uuid.UUID]int, map[uuid.UUID]map[uuid.UUID]int) {
+}
+func (t *Team2AoA) Team4_HandlePunishmentVote(map[uuid.UUID]map[int]int) int {
+	return 0
 }
