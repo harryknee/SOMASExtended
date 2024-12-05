@@ -209,6 +209,10 @@ func (t *Team2AoA) GetOffenders(numOffences int) []uuid.UUID {
 	return offenders
 }
 
+func (t *Team2AoA) GetPunishment(agentScore int) int {
+	return (agentScore * 25) / 100
+}
+
 func CreateTeam2AoA(team *Team, leader uuid.UUID, auditDuration int) IArticlesOfAssociation {
 	log.Println("Creating Team2AoA")
 	offenceMap := make(map[uuid.UUID]int)

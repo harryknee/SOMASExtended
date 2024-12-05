@@ -298,3 +298,7 @@ func (t *Team5AOA) Team4_RunProposedWithdrawalVote(map[uuid.UUID]int, map[uuid.U
 func (t *Team5AOA) Team4_HandlePunishmentVote(map[uuid.UUID]map[int]int) int {
 	return 0
 }
+
+func (t *Team5AOA) GetPunishment(agentScore int) int {
+	return (agentScore * 25) / 100
+}

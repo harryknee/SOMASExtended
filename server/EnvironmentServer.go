@@ -81,6 +81,7 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 	// Execute Contribution Audit if necessary
 	if agentToAudit := team.TeamAoA.GetVoteResult(contributionAuditVotes); agentToAudit != uuid.Nil {
 		auditResult := team.TeamAoA.GetContributionAuditResult(agentToAudit)
+		cs.ApplyPunishment(team, agentToAudit)
 		for _, agentID := range team.Agents {
 			agent := cs.GetAgentMap()[agentID]
 			agent.SetAgentContributionAuditResult(agentToAudit, auditResult)
@@ -139,6 +140,7 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 	// Execute Withdrawal Audit if necessary
 	if agentToAudit := team.TeamAoA.GetVoteResult(withdrawalAuditVotes); agentToAudit != uuid.Nil {
 		auditResult := team.TeamAoA.GetWithdrawalAuditResult(agentToAudit)
+		cs.ApplyPunishment(team, agentToAudit)
 		for _, agentID := range team.Agents {
 			agent := cs.GetAgentMap()[agentID]
 			agent.SetAgentWithdrawalAuditResult(agentToAudit, auditResult)
@@ -292,7 +294,7 @@ func (cs *EnvironmentServer) RunTurnTeam4(team *common.Team) {
 		newScore := agentScore - punishmentResult
 		agent.SetTrueScore(newScore)
 
-		log.Printf("Updated Score for Agent %v: %d\n", agent.GetID(), newScore)
+		log.Printf("Updated Score for Agent %v: %d\n", agent.GetID(), agent.GetTrueScore())
 
 		currentPool := team.GetCommonPool()
 		log.Printf("Current Common Pool: %d\n", currentPool)
@@ -1040,4 +1042,23 @@ func (cs *EnvironmentServer) GetAgentScores() map[uuid.UUID]int {
 		agentScores[agent.GetID()] = agent.GetTrueScore()
 	}
 	return agentScores
+}
+
+func (cs *EnvironmentServer) ApplyPunishment(team *common.Team, agentToAudit uuid.UUID) {
+	agent := cs.GetAgentMap()[agentToAudit]
+	agentScore := agent.GetTrueScore()
+
+	punishmentResult := team.TeamAoA.GetPunishment(agentScore)
+	log.Printf("Punishment Result for Agent %v: %d (Agent Score: %d)\n", agent.GetID(), punishmentResult, agentScore)
+
+	newScore := agentScore - punishmentResult
+	agent.SetTrueScore(newScore)
+	log.Printf("Updated Score for Agent %v: %d\n", agent.GetID(), agent.GetTrueScore())
+
+	currentPool := team.GetCommonPool()
+	log.Printf("Current Common Pool: %d\n", currentPool)
+
+	team.SetCommonPool(currentPool + punishmentResult)
+	updatedPool := team.GetCommonPool()
+	log.Printf("Updated Common Pool: %d\n", updatedPool)
 }

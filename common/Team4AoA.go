@@ -393,3 +393,7 @@ func (f *Team4AoA) ResourceAllocation(agentScores map[uuid.UUID]int, remainingRe
 func (t *Team4AoA) RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {
 
 }
+
+func (t *Team4AoA) GetPunishment(agentScore int) int {
+	return (agentScore * 25) / 100
+}
