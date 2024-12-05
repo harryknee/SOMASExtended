@@ -88,7 +88,7 @@ func (mi *ExtendedAgent) InitializeStartofTurn() {
 
 // custom function: ask for rolling the dice
 func (mi *ExtendedAgent) StartRollingDice(instance common.IExtendedAgent) {
-	mi.InitializeStartofTurn()
+
 	if mi.VerboseLevel > 10 {
 		fmt.Printf("%s is rolling the Dice\n", mi.GetID())
 	}
@@ -562,5 +562,8 @@ func (mi *ExtendedAgent) UpdateStateAfterWithdrawalAudit() {
 	// overwrite if your agent need to update internal state at this stage.
 }
 func (mi *ExtendedAgent) UpdateStateAfterRoll() {
+	// overwrite if your agent need to update internal state at this stage.
+}
+func (mi *ExtendedAgent) UpdateStateTurnend() {
 	// overwrite if your agent need to update internal state at this stage.
 }

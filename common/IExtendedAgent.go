@@ -73,4 +73,6 @@ type IExtendedAgent interface {
 	UpdateStateAfterContributionAudit()
 	UpdateStateAfterWithdrawalAudit()
 	UpdateStateAfterRoll()
+	UpdateStateTurnend()
+	InitializeStartofTurn()
 }

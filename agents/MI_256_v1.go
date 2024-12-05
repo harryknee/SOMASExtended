@@ -68,6 +68,10 @@ type MI_256_v1 struct {
 	IcaughtLying             bool
 }
 
+func (mi *MI_256_v1) print_alignment() {
+	fmt.Println(mi.GetID(), " has been created. Chaoticness:", mi.chaoticness, "Evilness:", mi.evilness)
+}
+
 // constructor for MI_256_v1
 func Team4_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent], agentConfig AgentConfig) *MI_256_v1 {
 	mi_256 := &MI_256_v1{
@@ -138,19 +142,30 @@ func (mi *MI_256_v1) UpdateStateAfterRoll() {
 	mi.UpdateMoodAfterRoll()
 
 }
+func (mi *MI_256_v1) UpdateStateTurnend() {
+	mi.UpdateMoodAfterRoundEnd()
+
+}
 
 //------functions to calculated the expected AOA contributions and stuff for all agents -------------------------------
 
 func (mi *MI_256_v1) CalcAOAContibution() int {
 
-	mi.AoAExpectedContribution = 5
+	// mi.AoAExpectedContribution = int(0.5 * float64(mi.Score))
+	mi.AoAExpectedContribution = 2
+	fmt.Println(mi.GetID(), " the expected contribution is:", mi.AoAExpectedContribution)
 	mi.isAoAContributionFixed = true
 	return mi.AoAExpectedContribution
 
 }
 func (mi *MI_256_v1) CalcAOAWithdrawal() int {
-	mi.AoAExpectedWithdrawal = 5
+	// common_pool := mi.Server.GetTeam(mi.GetID()).GetCommonPool()
+
+	// mi.AoAExpectedWithdrawal = int(common_pool / (len(mi.Server.GetTeam(mi.GetID()).Agents) + 1))
+	mi.AoAExpectedWithdrawal = 1
+	fmt.Println(mi.GetID(), " the expected withdrawal is:", mi.AoAExpectedWithdrawal)
 	mi.isAoAWithdrawalFixed = true
+
 	return mi.AoAExpectedWithdrawal
 }
 func (mi *MI_256_v1) CalcAOAAuditCost() {
@@ -228,14 +243,14 @@ func (mi *MI_256_v1) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) 
 // Dice Strategy
 func (mi *MI_256_v1) StickOrAgain(accumulatedScore int, prevRoll int) bool {
 
-	fmt.Printf("Called overriden StickOrAgain\n")
+	// fmt.Printf("Called overriden StickOrAgain\n")
 
 	// the higher the mood, the more risky the roll dice strategy will be
 
 	threshLow := 8
 	threshMid := 11
 	threshHigh := 14
-	moodthresh := 20
+	moodthresh := 10
 	if mi.mood > moodthresh { // be greedy
 		if mi.LastScore < threshHigh {
 			return false
@@ -266,8 +281,11 @@ func (mi *MI_256_v1) StickOrAgain(accumulatedScore int, prevRoll int) bool {
 // Contribution Strategy
 func (mi *MI_256_v1) DecideContribution() int {
 	mi.CalcAOAContibution()
-	if mi.Score == 0 {
+	if mi.Score == 0 || mi.AoAExpectedContribution == 0 {
+		mi.intendedContribution = 0
+		mi.declaredcontribution = 0
 		return 0
+
 	}
 
 	//parameters: AoAExpectedContribution, Mood, Lawfulness,Evilness，  CurrentScore
@@ -275,11 +293,11 @@ func (mi *MI_256_v1) DecideContribution() int {
 	contribute_percentage := 0.0
 	// CurrentScore = mi.Score
 
-	mood_modifier := float64(1.0 / 32.0 * float64(mi.mood))
-	neutral_mean := float64(mi.AoAExpectedContribution / mi.Score) //normalize from 0-1
+	mood_modifier := float64(1.0 / 100.0 * float64(mi.mood))
+	neutral_mean := (float64(mi.AoAExpectedContribution) / float64(min(mi.Score, 2*mi.AoAExpectedContribution))) //normalize from 0-1
 	//we model evil and good with different standard deviations, with chaotic being high standard deviation,
 	lawful_evil_mean := neutral_mean * 7 / 8
-	neutral_evil_mean := neutral_mean / 2
+	neutral_evil_mean := neutral_mean * 3 / 4
 	neutral_good_mean := (1-neutral_mean)/2 + neutral_mean
 	lawful_good_mean := float64(7.0 / 8)
 	neutral_standard_deviation := float64(1.0 / 12)
@@ -291,6 +309,9 @@ func (mi *MI_256_v1) DecideContribution() int {
 	neutral_evil_standard_deviation := 1.0 / 8 * neutral_mean
 	lawful_good_standard_deviation := 1.0 / 16 * (1 - neutral_mean)
 	lawful_evil_standard_deviation := 1.0 / 16 * neutral_mean
+	// fmt.Println(mi.GetID(), " neutral_mean", neutral_mean)
+	// fmt.Println(mi.GetID(), " lawful_evil_mean", lawful_evil_mean)
+	// fmt.Println(mi.GetID(), " neutral_evil_mean", neutral_evil_mean)
 
 	Apply_mood := func(contribute_percentage float64) float64 {
 		if contribute_percentage > float64(neutral_mean) {
@@ -299,6 +320,7 @@ func (mi *MI_256_v1) DecideContribution() int {
 			return contribute_percentage - mood_modifier
 		}
 	}
+
 	// if the agent is a lawful agent, he would tend to not break the AoA
 	// if the agent is a good agent, he would tend to contribute more than he should
 	// absolute neutral: donating as much as the AoA asks.
@@ -347,12 +369,21 @@ func (mi *MI_256_v1) DecideContribution() int {
 		}
 	}
 	contribute_percentage = Apply_mood(contribute_percentage)
-
-	mi.intendedContribution = min(max(int(math.Round(float64(contribute_percentage)*float64(mi.Score))), 0), mi.Score)
+	fmt.Println(mi.GetID(), " contribution percentage", contribute_percentage)
+	mi.print_alignment()
+	mi.intendedContribution = min(max(int(math.Round(float64(contribute_percentage)*float64(min(mi.Score, 2*mi.AoAExpectedContribution)))), 0), mi.Score)
 
 	// how much to declare:
 	// if you contributed less, there is no point to lie ( if audition checks against the expected contribution)
-	mi.declaredcontribution = max(mi.intendedContribution, mi.AoAExpectedContribution)
+	if mi.isAoAContributionFixed {
+		mi.declaredcontribution = max(mi.intendedContribution, mi.AoAExpectedContribution)
+	} else {
+		if mi.intendedContribution > 0 {
+			mi.declaredcontribution = mi.intendedContribution
+		} else {
+			mi.declaredcontribution = rand.Intn(11) + 2
+		}
+	}
 
 	return mi.intendedContribution
 }
@@ -364,14 +395,19 @@ func (mi *MI_256_v1) GetStatedContribution(instance common.IExtendedAgent) int {
 // Withdrawal Strategy
 func (mi *MI_256_v1) DecideWithdrawal() int {
 	mi.CalcAOAWithdrawal()
+	if mi.AoAExpectedWithdrawal == 0 {
+		mi.IntendedWithdrawal = 0
+		mi.declaredWithdrawal = 0
+		return 0
+	}
 
 	mi.IntendedWithdrawal = 0
 	Withdrawal_percentage := 0.0
 	// CurrentScore = mi.Score
 
-	mood_modifier := float64(1.0 / 32.0 * float64(mi.mood))
+	mood_modifier := float64(1.0 / 100.0 * float64(mi.mood))
 	// we scale from 0-2*AoAWithdrawal
-	neutral_mean := float64(mi.AoAExpectedWithdrawal / (2*mi.AoAExpectedWithdrawal + 1)) //normalize from 0-1
+	neutral_mean := float64(float64(mi.AoAExpectedWithdrawal) / float64((2 * mi.AoAExpectedWithdrawal))) //normalize from 0-1
 	//we model evil and good with different standard deviations, with chaotic being high standard deviation,
 	lawful_evil_mean := neutral_mean * 9 / 8
 	neutral_evil_mean := neutral_mean/4 + neutral_mean
@@ -385,7 +421,7 @@ func (mi *MI_256_v1) DecideWithdrawal() int {
 	neutral_good_standard_deviation := 1.0 / 8 * (1 - neutral_mean)
 	neutral_evil_standard_deviation := 1.0 / 8 * neutral_mean
 	lawful_good_standard_deviation := 1.0 / 16 * (1 - neutral_mean)
-	lawful_evil_standard_deviation := 1.0 / 16 * neutral_mean
+	lawful_evil_standard_deviation := 1.0 / 8 * neutral_mean
 
 	Apply_mood := func(Withdrawal_percentage float64) float64 {
 		if Withdrawal_percentage > float64(neutral_mean) {
@@ -434,12 +470,17 @@ func (mi *MI_256_v1) DecideWithdrawal() int {
 		}
 	}
 	Withdrawal_percentage = Apply_mood(Withdrawal_percentage)
-
+	fmt.Println(mi.GetID(), " withdrawal percentage", Withdrawal_percentage)
+	mi.print_alignment()
 	mi.IntendedWithdrawal = max(int(math.Round(float64(Withdrawal_percentage)*float64(mi.AoAExpectedWithdrawal*2))), 0)
 
 	// how much to declare:
 	// if you withdrawed more, there is no point to lie ( if audition checks against the expected )
-	mi.declaredWithdrawal = min(mi.IntendedWithdrawal, mi.AoAExpectedWithdrawal)
+	if mi.isAoAWithdrawalFixed {
+		mi.declaredWithdrawal = min(mi.IntendedWithdrawal, mi.AoAExpectedWithdrawal)
+	} else {
+		mi.declaredWithdrawal = mi.IntendedWithdrawal
+	}
 
 	// TODO: implement contribution strategy
 	return mi.IntendedWithdrawal
@@ -455,7 +496,7 @@ func (mi *MI_256_v1) DecideAudit() map[uuid.UUID]int {
 	// alignment calculates the likelyhood of you initiating an audit
 	// cheat greatly modifies the likelyhood, if there is cheating detected, then there will be a greater chance of auditing
 	// affinity factors in the suspision,  if someone is declaring large contributions when there is a cheat, taking small sums when there are loads missing from the pool
-	mood_modifier := float64(1.0 / 32.0 * float64(mi.mood))
+	mood_modifier := float64(1.0 / 100.0 * float64(mi.mood))
 	Apply_mood := func(audit_percentage, neutral_mean float64) float64 {
 		if audit_percentage > float64(neutral_mean) {
 			return audit_percentage + mood_modifier
@@ -573,15 +614,23 @@ func (mi *MI_256_v1) DecideAudit() map[uuid.UUID]int {
 		}
 
 		Apply_mood(audit_percentage, abs_neutral_mean)
-		if rand.Float64() <= audit_percentage {
+		random := rand.Float64()
+		if random <= audit_percentage {
 			auditmap[agent] = 1
+		} else if random >= audit_percentage+(1-audit_percentage)/3 {
+			auditmap[agent] = -1
 		} else {
+			// if in this range, abstain
 			auditmap[agent] = 0
 		}
 
 	}
+	// var worstAgent uuid.UUID // the agent that you would vote for
+	// for agent, vote := range auditmap {
+	// 	// audit the
+	// }
 
-	// TODO: implement audit strategy
+	// this need to be refined because I don't think this is ever called.
 	return auditmap
 }
 func (mi *MI_256_v1) DecideVote() bool {
@@ -593,8 +642,16 @@ func (mi *MI_256_v1) DecideVote() bool {
 	voting for a AoA
 	voting for audition
 
+
+
 	*/
 	// TODO: implement vote strategy
+	var AgentVotingOn uuid.UUID
+	if mi.affinity[AgentVotingOn] > 10 {
+		return true
+	} else {
+		return false
+	}
 
 	return true
 }
@@ -616,6 +673,7 @@ func (mi *MI_256_v1) DecideVote() bool {
 // ---------------------------------------------------------------
 func (mi *MI_256_v1) RandomizeCharacter() {
 	mi.chaoticness = rand.Intn(3) + 1
+
 	mi.evilness = rand.Intn(3) + 1
 	mi.haveIlied = false
 	mi.Initialize_opninions()
@@ -636,6 +694,7 @@ func (mi *MI_256_v1) Initialize_opninions() {
 
 func (mi *MI_256_v1) InitializeStartofTurn() {
 	// this function updates the agent states every start of turn, refreshing states if needed
+	fmt.Println(mi.GetID(), " mood this turn", mi.mood)
 	mi.UpdateMoodTurnStart()
 	mi.haveIlied = false
 	for key := range mi.affinityChange {
@@ -675,6 +734,28 @@ func (mi *MI_256_v1) UpdateMoodAfterRoll() {
 }
 
 func (mi *MI_256_v1) UpdateMoodAfterRoundEnd() {
+	numAgent := 0
+	contributedSum, withdrawalSum := 0, 0
+	for _, agent := range mi.Server.GetTeam(mi.GetID()).Agents {
+		contributedSum += mi.teamAgentsDeclaredContribution[agent]
+		withdrawalSum += mi.teamAgentsDeclaredWithdraw[agent]
+		numAgent += 1
+
+	}
+	averageNetgain := float64((withdrawalSum - contributedSum) / numAgent)
+	personalNetgain := mi.IntendedWithdrawal - mi.intendedContribution
+
+	//comparing the agent's performance to your own performance
+	if float64(personalNetgain) < (averageNetgain) {
+		teamPerformanceModifier := 3
+		// change if you are not doing very well
+		mi.mood += teamPerformanceModifier * (mi.chaoticness - 2)
+	} else if float64(personalNetgain) > (averageNetgain) {
+		teamPerformanceModifier := 1
+		//else you feel confident about your current mood
+		mi.mood += teamPerformanceModifier * (mi.chaoticness)
+
+	}
 	// you calculate everyone's declared net gain,
 
 }
@@ -683,6 +764,7 @@ func (mi *MI_256_v1) UpdateMoodAfterAuditionEnd() {
 	if mi.IcaughtLying {
 		mi.mood = 3 * mi.chaoticness
 	}
+
 }
 
 /*
@@ -765,7 +847,8 @@ func (mi *MI_256_v1) UpdateAffinityAfterContribute() {
 func (mi *MI_256_v1) UpdateAffinityAfterWithdraw() {
 	//similar to contribution, there withdrawing same amount is fair, and satisfaction comes into play
 	// if there is no set distribution, we would assume the avarage amount in the pot would be a fair number
-	agentExpected := int(mi.last_common_pool / (len(mi.Server.GetTeam(mi.GetID()).Agents) + 1))
+	common_pool := mi.Server.GetTeam(mi.GetID()).GetCommonPool()
+	agentExpected := int(common_pool / (len(mi.Server.GetTeam(mi.GetID()).Agents) + 1))
 
 	for _, agent := range mi.Server.GetTeam(mi.GetID()).Agents {
 		if mi.isAoAWithdrawalFixed {

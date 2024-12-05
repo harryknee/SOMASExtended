@@ -62,6 +62,7 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 			// Override agent rolls for testing purposes
 			// agentList := []uuid.UUID{agentID}
 			// cs.OverrideAgentRolls(agentID, agentList, 1)
+			agent.InitializeStartofTurn()
 			agent.StartRollingDice(agent)
 			agent.UpdateStateAfterRoll()
 			agentActualContribution := agent.GetActualContribution(agent)
@@ -158,6 +159,10 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 				agent.UpdateStateAfterWithdrawalAudit()
 			}
 
+		}
+		for _, agentID := range team.Agents { // end turn update game state
+			agent := cs.GetAgentMap()[agentID]
+			agent.UpdateStateTurnend()
 		}
 
 	}
