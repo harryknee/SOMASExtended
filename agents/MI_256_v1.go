@@ -66,6 +66,9 @@ type MI_256_v1 struct {
 	cheatContributeDiff      int
 	haveIlied                bool
 	IcaughtLying             bool
+
+	lastThreshold int
+	lastTurnScore int
 }
 
 func (mi *MI_256_v1) print_alignment() {
@@ -117,33 +120,34 @@ func (mi *MI_256_v1) UpdateTeamDeclaredWithdrawal() {
 	}
 }
 
-func (mi *MI_256_v1) UpdateStateAfterContribution() {
+func (mi *MI_256_v1) Team4_UpdateStateAfterContribution() {
 	mi.UpdateTeamDeclaredContribution()
 	mi.UpdateAffinityAfterContribute()
 
 }
-func (mi *MI_256_v1) UpdateStateAfterWithdrawal() {
+func (mi *MI_256_v1) Team4_UpdateStateAfterWithdrawal() {
 	mi.UpdateTeamDeclaredWithdrawal()
 	mi.UpdateAffinityAfterWithdraw()
 
 }
-func (mi *MI_256_v1) UpdateStateAfterContributionAudit() {
+func (mi *MI_256_v1) Team4_UpdateStateAfterContributionAudit() {
 	mi.UpdateAffinityAfterVote()
 	mi.UpdateAffinityAfterAudit()
 
 }
-func (mi *MI_256_v1) UpdateStateAfterWithdrawalAudit() {
+func (mi *MI_256_v1) Team4_UpdateStateAfterWithdrawalAudit() {
 	mi.UpdateAffinityAfterVote()
 	mi.UpdateAffinityAfterAudit()
 	mi.UpdateMoodAfterAuditionEnd()
 
 }
-func (mi *MI_256_v1) UpdateStateAfterRoll() {
+func (mi *MI_256_v1) Team4_UpdateStateAfterRoll() {
 	mi.UpdateMoodAfterRoll()
 
 }
-func (mi *MI_256_v1) UpdateStateTurnend() {
+func (mi *MI_256_v1) Team4_UpdateStateTurnend() {
 	mi.UpdateMoodAfterRoundEnd()
+	mi.lastTurnScore = mi.Score
 
 }
 
@@ -396,12 +400,24 @@ func (mi *MI_256_v1) DecideContribution() int {
 	return mi.intendedContribution
 }
 
+func (mi *MI_256_v1) GetActualContribution(instance common.IExtendedAgent) int {
+	if mi.HasTeam() {
+		mi.intendedContribution = mi.DecideContribution()
+		return mi.intendedContribution
+	} else {
+		if mi.VerboseLevel > 6 {
+		}
+		return 0
+	}
+}
+
 func (mi *MI_256_v1) GetStatedContribution(instance common.IExtendedAgent) int {
 	return mi.declaredcontribution
 }
 
 // Withdrawal Strategy
-func (mi *MI_256_v1) DecideWithdrawal() int {
+func (mi *MI_256_v1) DecideWithdrawal(upperbound int) int {
+	fmt.Print("deciding withdrawal")
 	mi.CalcAOAWithdrawal()
 	if mi.AoAExpectedWithdrawal == 0 {
 		mi.IntendedWithdrawal = 0
@@ -415,7 +431,7 @@ func (mi *MI_256_v1) DecideWithdrawal() int {
 
 	mood_modifier := float64(1.0 / 100.0 * float64(mi.mood))
 	// we scale from 0-2*AoAWithdrawal
-	neutral_mean := float64(float64(mi.AoAExpectedWithdrawal) / float64((2 * mi.AoAExpectedWithdrawal))) //normalize from 0-1
+	neutral_mean := float64(float64(mi.AoAExpectedWithdrawal) / float64((upperbound))) //normalize from 0-1
 	//we model evil and good with different standard deviations, with chaotic being high standard deviation,
 	lawful_evil_mean := neutral_mean * 9 / 8
 	neutral_evil_mean := neutral_mean/4 + neutral_mean
@@ -480,7 +496,7 @@ func (mi *MI_256_v1) DecideWithdrawal() int {
 	Withdrawal_percentage = Apply_mood(Withdrawal_percentage)
 	fmt.Println(mi.GetID(), " withdrawal percentage", Withdrawal_percentage)
 	mi.print_alignment()
-	mi.IntendedWithdrawal = max(int(math.Round(float64(Withdrawal_percentage)*float64(mi.AoAExpectedWithdrawal*2))), 0)
+	mi.IntendedWithdrawal = max(int(math.Round(float64(Withdrawal_percentage)*float64(upperbound))), 0)
 
 	// how much to declare:
 	// if you withdrawed more, there is no point to lie ( if audition checks against the expected )
@@ -494,6 +510,27 @@ func (mi *MI_256_v1) DecideWithdrawal() int {
 	}
 
 	// TODO: implement contribution strategy
+	return mi.IntendedWithdrawal
+}
+
+func (mi *MI_256_v1) GetActualWithdrawal(instance common.IExtendedAgent) int {
+	// first check if the agent has a team
+	if !mi.HasTeam() {
+		return 0
+	}
+	commonPool := mi.Server.GetTeam(mi.GetID()).GetCommonPool()
+	mi.AoAExpectedWithdrawal = mi.CalcAOAWithdrawal()
+	if mi.Score < mi.lastThreshold+5 {
+		mi.IntendedWithdrawal = mi.DecideWithdrawal((commonPool))
+	} else {
+		mi.IntendedWithdrawal = mi.DecideWithdrawal((mi.AoAExpectedWithdrawal * 2))
+	}
+	// commonPool := mi.Server.GetTeam(mi.GetID()).GetCommonPool()
+	// withdrawal := mi.Server.GetTeam(mi.GetID()).TeamAoA.GetExpectedWithdrawal(mi.GetID(), mi.GetTrueScore(), commonPool)
+	// if commonPool < withdrawal {
+	// 	withdrawal = commonPool
+	// }
+
 	return mi.IntendedWithdrawal
 }
 
@@ -813,7 +850,9 @@ func (mi *MI_256_v1) Initialize_opninions() {
 
 }
 
-func (mi *MI_256_v1) InitializeStartofTurn() {
+func (mi *MI_256_v1) Team4_UpdateStateStartTurn() {
+	// overwrite if your agent need to update internal state at this stage.
+
 	// this function updates the agent states every start of turn, refreshing states if needed
 	fmt.Println(mi.GetID(), " mood this turn", mi.mood)
 	mi.UpdateMoodTurnStart()
@@ -823,6 +862,9 @@ func (mi *MI_256_v1) InitializeStartofTurn() {
 	}
 	mi.isThereCheatContribution = false
 	mi.isThereCheatWithdrawal = false
+	if mi.Score < mi.lastTurnScore {
+		mi.lastThreshold = mi.lastTurnScore - mi.Score
+	}
 
 }
 
@@ -1117,7 +1159,7 @@ func (mi *MI_256_v1) Team4_ProposeWithdrawal() int {
 	if !mi.HasTeam() {
 		return 0
 	}
-	mi.DecideWithdrawal()
+	mi.DecideWithdrawal(mi.Server.GetTeam(mi.GetID()).GetCommonPool())
 	return mi.IntendedWithdrawal
 }
 func (mi *MI_256_v1) Team4_GetPunishmentVoteMap() map[int]int {

@@ -160,6 +160,7 @@ func (cs *EnvironmentServer) RunTurnTeam4(team *common.Team) {
 		// Override agent rolls for testing purposes
 		// agentList := []uuid.UUID{agentID}
 		// cs.OverrideAgentRolls(agentID, agentList, 1)
+		agent.Team4_UpdateStateStartTurn()
 		agent.StartRollingDice(agent)
 		agentActualContribution := agent.GetActualContribution(agent)
 		agentContributionsTotal += agentActualContribution
@@ -167,8 +168,10 @@ func (cs *EnvironmentServer) RunTurnTeam4(team *common.Team) {
 
 		agent.StateContributionToTeam(agent)
 		agentScore := agent.GetTrueScore()
+		agent.Team4_UpdateStateAfterContribution()
 		// Update audit result for this agent
 		team.TeamAoA.SetContributionAuditResult(agentID, agentScore, agentActualContribution, agentStatedContribution)
+
 		agent.SetTrueScore(agentScore - agentActualContribution)
 	}
 
@@ -209,6 +212,7 @@ func (cs *EnvironmentServer) RunTurnTeam4(team *common.Team) {
 	proposedWithdrawalMap := make(map[uuid.UUID]int)
 	for _, agentID := range team.Agents {
 		agent := cs.GetAgentMap()[agentID]
+		agent.Team4_UpdateStateAfterContributionAudit()
 		agentStatedWithdrawal := agent.Team4_GetProposedWithdrawal(agent)
 		proposedWithdrawalMap[agentID] = agentStatedWithdrawal
 		agent.Team4_StateProposalToTeam()
@@ -239,6 +243,7 @@ func (cs *EnvironmentServer) RunTurnTeam4(team *common.Team) {
 			agentActualWithdrawal = currentPool // Ensure withdrawal does not exceed available pool
 		}
 		agentStatedWithdrawal := agent.GetStatedWithdrawal(agent)
+		agent.Team4_UpdateStateAfterWithdrawal()
 
 		agentScore := agent.GetTrueScore()
 		// Update audit result for this agent
@@ -302,6 +307,7 @@ func (cs *EnvironmentServer) RunTurnTeam4(team *common.Team) {
 		team.SetCommonPool(currentPool + punishmentResult)
 		updatedPool := team.GetCommonPool()
 		log.Printf("Updated Common Pool: %d\n", updatedPool)
+		agent.Team4_UpdateStateAfterContributionAudit()
 
 	}
 	// ***************
@@ -312,6 +318,10 @@ func (cs *EnvironmentServer) RunTurnTeam4(team *common.Team) {
 			agent := cs.GetAgentMap()[agentID]
 			agent.SetAgentWithdrawalAuditResult(agentToAudit, auditResult)
 		}
+	}
+	for _, agentID := range team.Agents {
+		agent := cs.GetAgentMap()[agentID]
+		agent.Team4_UpdateStateTurnend()
 	}
 }
 

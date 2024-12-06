@@ -94,4 +94,13 @@ type IExtendedAgent interface {
 
 	// Team 2 specific functions
 	Team2_GetLeaderVote() Vote
+
+	//Team 4 Agent internal state update
+	Team4_UpdateStateAfterContribution()
+	Team4_UpdateStateAfterWithdrawal()
+	Team4_UpdateStateAfterContributionAudit()
+	Team4_UpdateStateAfterWithdrawalAudit()
+	Team4_UpdateStateAfterRoll()
+	Team4_UpdateStateTurnend()
+	Team4_UpdateStateStartTurn()
 }
