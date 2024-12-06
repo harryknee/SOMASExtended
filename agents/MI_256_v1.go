@@ -256,8 +256,8 @@ func (mi *MI_256_v1) StickOrAgain(accumulatedScore int, prevRoll int) bool {
 
 	// the higher the mood, the more risky the roll dice strategy will be
 
-	threshLow := 8
-	threshMid := 11
+	threshLow := 9
+	threshMid := 12
 	threshHigh := 14
 	moodthresh := 10
 	if mi.mood > moodthresh { // be greedy
