@@ -361,7 +361,7 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 
 	for _, team := range cs.Teams {
 		if len(team.Agents) == 0 {
-			fmt.Printf("No agents in team: %s\n", team.TeamID)
+			log.Printf("No agents in team: %s\n", team.TeamID)
 			continue
 		}
 		teamAoA := reflect.TypeOf(team.TeamAoA)
@@ -982,7 +982,7 @@ func (cs *EnvironmentServer) RecordTurnInfo() {
 }
 
 func (cs *EnvironmentServer) RunTurnTeam5(team *common.Team) {
-	fmt.Println("\nRunning turn for team ", team.TeamID)
+	log.Println("\nRunning turn for team ", team.TeamID)
 
 	// Sum of contributions from all agents in the team for this turn
 	agentContributionsTotal := 0
@@ -1020,7 +1020,7 @@ func (cs *EnvironmentServer) RunTurnTeam5(team *common.Team) {
 		if auditCost <= team.GetCommonPool() {
 			// Deduct the audit cost from the common pool
 			team.SetCommonPool(team.GetCommonPool() - auditCost)
-			fmt.Printf("[server] Audit cost of %v deducted from the common pool. Remaining pool: %v\n", auditCost, team.GetCommonPool())
+			log.Printf("[server] Audit cost of %v deducted from the common pool. Remaining pool: %v\n", auditCost, team.GetCommonPool())
 
 			// Proceed with the audit
 			auditResult := team.TeamAoA.GetContributionAuditResult(agentToAudit)
@@ -1029,7 +1029,7 @@ func (cs *EnvironmentServer) RunTurnTeam5(team *common.Team) {
 				agent.SetAgentContributionAuditResult(agentToAudit, auditResult)
 			}
 		} else {
-			fmt.Printf("[server] Not enough resources in the common pool to cover the audit cost. Skipping audit.\n")
+			log.Printf("[server] Not enough resources in the common pool to cover the audit cost. Skipping audit.\n")
 		}
 	}
 
@@ -1059,7 +1059,7 @@ func (cs *EnvironmentServer) RunTurnTeam5(team *common.Team) {
 		// Update agent score and common pool
 		agent.SetTrueScore(agentScore + agentActualWithdrawal)
 		team.SetCommonPool(currentPool - agentActualWithdrawal)
-		fmt.Printf("[server] Agent %v withdrew %v. Remaining pool: %v\n", agentID, agentActualWithdrawal, team.GetCommonPool())
+		log.Printf("[server] Agent %v withdrew %v. Remaining pool: %v\n", agentID, agentActualWithdrawal, team.GetCommonPool())
 	}
 
 	// Initiate Withdrawal Audit vote
@@ -1076,7 +1076,7 @@ func (cs *EnvironmentServer) RunTurnTeam5(team *common.Team) {
 		if auditCost <= team.GetCommonPool() {
 			// Deduct the audit cost from the common pool
 			team.SetCommonPool(team.GetCommonPool() - auditCost)
-			fmt.Printf("[server] Withdrawal audit cost of %v deducted from the common pool. Remaining pool: %v\n", auditCost, team.GetCommonPool())
+			log.Printf("[server] Withdrawal audit cost of %v deducted from the common pool. Remaining pool: %v\n", auditCost, team.GetCommonPool())
 
 			// Proceed with the audit
 			auditResult := team.TeamAoA.GetWithdrawalAuditResult(agentToAudit)
@@ -1085,7 +1085,7 @@ func (cs *EnvironmentServer) RunTurnTeam5(team *common.Team) {
 				agent.SetAgentWithdrawalAuditResult(agentToAudit, auditResult)
 			}
 		} else {
-			fmt.Printf("[server] Not enough resources in the common pool to cover the audit cost. Skipping withdrawal audit.\n")
+			log.Printf("[server] Not enough resources in the common pool to cover the audit cost. Skipping withdrawal audit.\n")
 		}
 	}
 }
@@ -1134,21 +1134,23 @@ func (cs *EnvironmentServer) ProcessAgentsLeaving() {
 
 func (cs *EnvironmentServer) ApplyPunishment(team *common.Team, agentToAudit uuid.UUID) {
 	agent := cs.GetAgentMap()[agentToAudit]
-	agentScore := agent.GetTrueScore()
 
-	punishmentResult := team.TeamAoA.GetPunishment(agentScore, agentToAudit)
-	log.Printf("Punishment Result for Agent %v: %d (Agent Score: %d)\n", agent.GetID(), punishmentResult, agentScore)
+	if agent.HasTeam() {
+		agentScore := agent.GetTrueScore()
+		punishmentResult := team.TeamAoA.GetPunishment(agentScore, agentToAudit)
+		log.Printf("Punishment Result for Agent %v: %d (Agent Score: %d)\n", agent.GetID(), punishmentResult, agentScore)
 
-	newScore := agentScore - punishmentResult
-	agent.SetTrueScore(newScore)
-	log.Printf("Updated Score for Agent %v: %d\n", agent.GetID(), agent.GetTrueScore())
+		newScore := agentScore - punishmentResult
+		agent.SetTrueScore(newScore)
+		log.Printf("Updated Score for Agent %v: %d\n", agent.GetID(), agent.GetTrueScore())
 
-	currentPool := team.GetCommonPool()
-	log.Printf("Current Common Pool: %d\n", currentPool)
+		currentPool := team.GetCommonPool()
+		log.Printf("Current Common Pool: %d\n", currentPool)
 
-	team.SetCommonPool(currentPool + punishmentResult)
-	updatedPool := team.GetCommonPool()
-	log.Printf("Updated Common Pool: %d\n", updatedPool)
+		team.SetCommonPool(currentPool + punishmentResult)
+		updatedPool := team.GetCommonPool()
+		log.Printf("Updated Common Pool: %d\n", updatedPool)
+	}
 }
 
 func (cs *EnvironmentServer) GetTeamsByAoA(aoa int) []common.Team {
