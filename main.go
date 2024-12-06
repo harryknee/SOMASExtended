@@ -47,6 +47,16 @@ func main() {
 		VerboseLevel: 10,
 	}
 
+	// team4_evil := agents.Team4Config{
+	// 	Chaoticness: 3, // from 1 to 3, 3 being most chaotic
+	// 	Evilness:    3, // from 1 to 3, 3 being most evil
+	// }
+
+	team4_lawful := agents.Team4Config{
+		Chaoticness: 1, // from 1 to 3, 3 being most chaotic
+		Evilness:    1, // from 1 to 3, 3 being most evil
+	}
+
 	serv := &envServer.EnvironmentServer{
 		// note: the zero turn is used for team forming
 		BaseServer: baseServer.CreateBaseServer[common.IExtendedAgent](
@@ -65,8 +75,9 @@ func main() {
 
 	agentPopulation := []common.IExtendedAgent{}
 	for i := 0; i < numAgents; i++ {
-		agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig))
-		agentPopulation = append(agentPopulation, agents.Create_Team1Agent(serv, agentConfig))
+		agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig, team4_lawful))
+		// agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig, team4_lawful))
+		// agentPopulation = append(agentPopulation, agents.Create_Team1Agent(serv, agentConfig))
 		// agentPopulation = append(agentPopulation, agents.GetBaseAgents(serv, agentConfig))
 		// Add other teams' agents here
 	}

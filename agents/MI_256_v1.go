@@ -72,13 +72,20 @@ func (mi *MI_256_v1) print_alignment() {
 	fmt.Println(mi.GetID(), " has been created. Chaoticness:", mi.chaoticness, "Evilness:", mi.evilness)
 }
 
+type Team4Config struct {
+	Chaoticness int // from 1 to 3, 3 being most chaotic
+	Evilness    int // from 1 to 3, 3 being most evil
+}
+
 // constructor for MI_256_v1
-func Team4_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent], agentConfig AgentConfig) *MI_256_v1 {
+func Team4_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent], agentConfig AgentConfig, team4Config Team4Config) *MI_256_v1 {
 	mi_256 := &MI_256_v1{
 		ExtendedAgent: GetBaseAgents(funcs, agentConfig),
 	}
 	mi_256.TrueSomasTeamID = 4 // IMPORTANT: add your team number here!
 	mi_256.RandomizeCharacter()
+	mi_256.chaoticness = team4Config.Chaoticness
+	mi_256.evilness = team4Config.Evilness
 	mi_256.teamAgentsDeclaredRolls = make(map[uuid.UUID]int)
 	mi_256.teamAgentsDeclaredContribution = make(map[uuid.UUID]int)
 	mi_256.teamAgentsDeclaredWithdraw = make(map[uuid.UUID]int)
