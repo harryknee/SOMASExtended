@@ -16,7 +16,6 @@ import (
  * TODO:
  * - Write some tests for the audit functionality here
  * - Implement the functionality on the server to work with this (so with offences)
- * - Implement the kick functionality on the server
  * - Make sure that if the leader dies, or is audited, they have to be re-elected
  */
 
@@ -25,9 +24,10 @@ import (
 type Team2AoA struct {
 	auditRecord *AuditRecord
 	// Used by the server in order to track which agents need to be kicked/fined/rolling privileges revoked
-	OffenceMap map[uuid.UUID]int
-	Leader     uuid.UUID
-	Team       *Team
+	OffenceMap   map[uuid.UUID]int
+	RollsLeftMap map[uuid.UUID]int
+	Leader       uuid.UUID
+	Team         *Team
 }
 
 func (t *Team2AoA) GetExpectedContribution(agentId uuid.UUID, agentScore int) int {
@@ -41,7 +41,11 @@ func (t *Team2AoA) GetAuditResult(agentId uuid.UUID) bool {
 	offences := t.OffenceMap[agentId]
 	offences += warnings
 
-	if offences > 3 {
+	if offences == 1 {
+		t.RollsLeftMap[agentId] = 3
+	} else if offences == 2 {
+		t.RollsLeftMap[agentId] = 2
+	} else if offences >= 3 {
 		offences = 3
 	}
 
@@ -133,9 +137,11 @@ func (t *Team2AoA) GetVoteResult(votes []Vote) uuid.UUID {
 	if len(votes) == 0 {
 		return uuid.Nil
 	}
+
 	voteMap := make(map[uuid.UUID]int)
 	duration := 0
 	count := len(t.Team.Agents)
+
 	for _, vote := range votes {
 		durationVote, agentVotedFor := vote.AuditDuration, vote.VotedForID
 		votes := 1
@@ -148,13 +154,18 @@ func (t *Team2AoA) GetVoteResult(votes []Vote) uuid.UUID {
 		}
 		duration += durationVote
 	}
+
 	duration /= len(votes)
-	t.auditRecord.SetAuditDuration(duration)
+	if duration > 0 {
+		t.auditRecord.SetAuditDuration(duration)
+	}
+
 	for votedFor, votes := range voteMap {
 		if votes >= ((count / 2) + 1) {
 			return votedFor
 		}
 	}
+
 	return uuid.Nil
 }
 
@@ -198,24 +209,30 @@ func (t *Team2AoA) GetLeader() uuid.UUID {
 	return t.Leader
 }
 
-// After the AoA stuff has been run, the server can use this to determine what punishment to impose
-func (t *Team2AoA) GetOffenders(numOffences int) []uuid.UUID {
-	offenders := make([]uuid.UUID, 0)
-	for agentId, offences := range t.OffenceMap {
-		if offences == numOffences {
-			offenders = append(offenders, agentId)
-		}
-	}
-	return offenders
+func (t *Team2AoA) GetOffences(agentId uuid.UUID) int {
+	return t.OffenceMap[agentId]
+}
+
+func (t *Team2AoA) GetRollsLeft(agentId uuid.UUID) int {
+	return t.RollsLeftMap[agentId]
+}
+
+func (t *Team2AoA) RollOnce(agentId uuid.UUID) {
+	t.RollsLeftMap[agentId] = max(0, t.RollsLeftMap[agentId]-1)
 }
 
 func (t *Team2AoA) GetPunishment(agentScore int, agentId uuid.UUID) int {
-	return (agentScore * 25) / 100
+	multiplier := 50
+	if t.OffenceMap[agentId] == 2 {
+		multiplier = 100
+	}
+	return (agentScore * multiplier) / 100
 }
 
 func CreateTeam2AoA(team *Team, leader uuid.UUID, auditDuration int) IArticlesOfAssociation {
 	log.Println("Creating Team2AoA")
 	offenceMap := make(map[uuid.UUID]int)
+	rollsLeftMap := make(map[uuid.UUID]int)
 
 	if leader == uuid.Nil {
 		shuffledAgents := make([]uuid.UUID, len(team.Agents))
@@ -227,10 +244,11 @@ func CreateTeam2AoA(team *Team, leader uuid.UUID, auditDuration int) IArticlesOf
 	}
 
 	return &Team2AoA{
-		auditRecord: NewAuditRecord(auditDuration),
-		OffenceMap:  offenceMap,
-		Leader:      leader,
-		Team:        team,
+		auditRecord:  NewAuditRecord(auditDuration),
+		OffenceMap:   offenceMap,
+		RollsLeftMap: rollsLeftMap,
+		Leader:       leader,
+		Team:         team,
 	}
 }
 

@@ -16,7 +16,7 @@ type IExtendedAgent interface {
 	GetTeamID() uuid.UUID
 	GetLastTeamID() uuid.UUID
 	GetTrueScore() int
-	GetTeamRanking() []uuid.UUID
+	GetName() int
 
 	// Functions that involve strategic decisions
 	StartTeamForming(instance IExtendedAgent, agentInfoList []ExposedAgentInfo)
@@ -25,13 +25,14 @@ type IExtendedAgent interface {
 	GetActualWithdrawal(instance IExtendedAgent) int
 	GetStatedContribution(instance IExtendedAgent) int
 	GetStatedWithdrawal(instance IExtendedAgent) int
+	GetLeaveOpinion(agentID uuid.UUID) bool
 
 	// Setters
+	SetName(name int)
 	SetTeamID(teamID uuid.UUID)
 	SetTrueScore(score int)
 	SetAgentContributionAuditResult(agentID uuid.UUID, result bool)
 	SetAgentWithdrawalAuditResult(agentID uuid.UUID, result bool)
-	SetTeamRanking(teamRanking []uuid.UUID)
 	DecideStick()
 	DecideRollAgain()
 
@@ -66,6 +67,7 @@ type IExtendedAgent interface {
 	GetContributionAuditVote() Vote
 	GetWithdrawalAuditVote() Vote
 	GetTrueSomasTeamID() int
+	HasTeam() bool
 
 	// Team4 AoA Functions
 	Team4_GetRankUpVote() map[uuid.UUID]int
@@ -91,6 +93,8 @@ type IExtendedAgent interface {
 	Team1_AgreeRankBoundaries() [5]int
 	Team1_BoundaryProposalRequestHandler(msg *Team1RankBoundaryRequestMessage)
 	Team1_BoundaryProposalResponseHandler(msg *Team1RankBoundaryResponseMessage)
+	Team1_BoundaryBallotRequestHandler(msg *Team1BoundaryBallotRequestMessage)
+	Team1_BoundaryBallotResponseHandler(msg *Team1BoundaryBallotResponseMessage)
 
 	// Team 2 specific functions
 	Team2_GetLeaderVote() Vote

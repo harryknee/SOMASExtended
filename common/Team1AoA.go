@@ -64,8 +64,14 @@ func (t *Team1AoA) GetExpectedContribution(agentId uuid.UUID, agentScore int) in
 }
 
 func (t *Team1AoA) SetContributionAuditResult(agentId uuid.UUID, agentScore int, agentActualContribution int, agentStatedContribution int) {
+	if _, ok := t.auditResult[agentId]; !ok {
+		t.auditResult[agentId] = list.New()
+	}
 	t.auditResult[agentId].PushBack((agentStatedContribution > agentActualContribution))
 
+	if _, ok := t.agentLQueue[agentId]; !ok {
+		t.agentLQueue[agentId] = NewLeakyQueue(5)
+	}
 	// Update The LeakyQueue of agent
 	t.agentLQueue[agentId].Push(agentStatedContribution)
 }
@@ -80,11 +86,11 @@ func (t *Team1AoA) GetExpectedWithdrawal(agentId uuid.UUID, agentScore int, comm
 	var totalWeightedSum float64
 	totalWeightedSum = 0
 	for _, rank := range t.ranking {
-		totalWeightedSum += weightFunction(float64(t.rankBoundary[rank-1]))
+		totalWeightedSum += weightFunction(float64(t.rankBoundary[rank]))
 	}
 
 	// Retrieve the boundary value for the given agent, adjusted by its ranking
-	agentBoundary := float64(t.rankBoundary[t.ranking[agentId]-1])
+	agentBoundary := float64(t.rankBoundary[t.ranking[agentId]])
 
 	// Compute the weight for the agent based on the boundary
 	agentWeight := weightFunction(agentBoundary)
