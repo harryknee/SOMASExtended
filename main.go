@@ -66,11 +66,24 @@ func main() {
 	agentPopulation := []common.IExtendedAgent{}
 	for i := 0; i < numAgents; i++ {
 		agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig))
-		agentPopulation = append(agentPopulation, agents.Create_Team1Agent(serv, agentConfig))
 		agentPopulation = append(agentPopulation, agents.Team2_CreateAgent(serv, agentConfig))
 		// agentPopulation = append(agentPopulation, agents.GetBaseAgents(serv, agentConfig))
 		// Add other teams' agents here
 	}
+
+	for i := 0; i < numAgents-2; i++ {
+		// Add mostly honest agents
+		agentPopulation = append(agentPopulation, agents.Create_Team1Agent(serv, agentConfig, agents.Honest))
+	}
+
+	// Add a short term and long term cheater agent from team 1
+	team1ShortTermCheater := agents.Create_Team1Agent(serv, agentConfig, agents.CheatShortTerm)
+	log.Printf("Team1 %v is of type CheatShortTerm", team1ShortTermCheater.GetID())
+	agentPopulation = append(agentPopulation, team1ShortTermCheater)
+
+	team1LongTermCheater := agents.Create_Team1Agent(serv, agentConfig, agents.CheatLongTerm)
+	log.Printf("Team1 %v is of type CheatLongTerm", team1LongTermCheater.GetID())
+	agentPopulation = append(agentPopulation, team1LongTermCheater)
 
 	for i, agent := range agentPopulation {
 		agent.SetName(i)

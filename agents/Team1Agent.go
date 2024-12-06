@@ -37,17 +37,17 @@ type AgentType int
 const (
 	// iota automatically increments the value by 1 for each constant, starting from 0.
 
-    // Honest (Value: 0): Agents who always state what they actually contributed.
-    // Withdraw as per their expected withdrawal.
-	Honest AgentType = iota 
+	// Honest (Value: 0): Agents who always state what they actually contributed.
+	// Withdraw as per their expected withdrawal.
+	Honest AgentType = iota
 
-    // CheatLongTerm (Value: 1): Agents who always contribute honestly. After
-    // rising in rank, they start withdrawing more than allowed.
-	CheatLongTerm                   
+	// CheatLongTerm (Value: 1): Agents who always contribute honestly. After
+	// rising in rank, they start withdrawing more than allowed.
+	CheatLongTerm
 
-    // CheatShortTerm (Value: 2): Agents who immediately start cheating. They
-    // overstate their contributions and withdraw more than allowed.
-	CheatShortTerm                  
+	// CheatShortTerm (Value: 2): Agents who immediately start cheating. They
+	// overstate their contributions and withdraw more than allowed.
+	CheatShortTerm
 )
 
 type Team1Agent struct {
@@ -300,11 +300,11 @@ func (a1 *Team1Agent) GetWithdrawalAuditVote() common.Vote {
 	return common.CreateVote(0, a1.GetID(), uuid.Nil) // Default: No preference
 }
 
-func Create_Team1Agent(funcs baseAgent.IExposedServerFunctions[common.IExtendedAgent], agentConfig AgentConfig) *Team1Agent {
+func Create_Team1Agent(funcs baseAgent.IExposedServerFunctions[common.IExtendedAgent], agentConfig AgentConfig, ag_type AgentType) *Team1Agent {
 	return &Team1Agent{
 		ExtendedAgent: GetBaseAgents(funcs, agentConfig),
 		memory:        make(map[uuid.UUID]AgentMemory),
-		agentType:        CheatShortTerm,
+		agentType:     ag_type,
 	}
 }
 
@@ -373,7 +373,12 @@ func (mi *Team1Agent) HandleWithdrawalMessage(msg *common.WithdrawalMessage) {
 	mi.memory[msg.GetSender()] = memoryEntry
 }
 
+// Get true somas ID (team 1) for debug purposes
 func (mi *Team1Agent) GetTrueSomasTeamID() int {
-    return 1
+	return 1
 }
 
+// Get agent personality type for debug purposes
+func (mi *Team1Agent) GetAgentType() int {
+	return int(mi.agentType)
+}
