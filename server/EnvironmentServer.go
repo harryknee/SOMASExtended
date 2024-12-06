@@ -409,6 +409,8 @@ func (cs *EnvironmentServer) RunStartOfIteration(iteration int) {
 	cs.iteration = iteration
 	cs.allAgentsDead = false
 
+	cs.turn = 0
+
 	// record data
 	// cs.DataRecorder.RecordNewIteration()
 
