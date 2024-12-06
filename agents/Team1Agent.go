@@ -362,3 +362,8 @@ func (mi *Team1Agent) HandleWithdrawalMessage(msg *common.WithdrawalMessage) {
 	// Update the map with the modified entry
 	mi.memory[msg.GetSender()] = memoryEntry
 }
+
+func (mi *Team1Agent) GetTrueSomasTeamID() int {
+    return 1
+}
+
