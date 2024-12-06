@@ -4,23 +4,36 @@ from dash import dcc, html
 from dash.dependencies import Input, Output
 import plotly.express as px
 import plotly.graph_objects as go
+from datetime import datetime
 
 # Add these constants at the top of the file for consistent plot styling
 PLOT_HEIGHT = 600  # Increased height
 PLOT_WIDTH = 1000   # Increased from 700 to 1000
 PLOT_MARGIN = dict(r=150)  # More space on the right for legends
 
-# Read the CSV files
-base_path = 'visualization_output/csv_data'
-agent_records = pd.read_csv(f'{base_path}/agent_records.csv')
-common_records = pd.read_csv(f'{base_path}/common_records.csv')
-team_records = pd.read_csv(f'{base_path}/team_records.csv')
+# Move the data loading into a function
+def load_data():
+    base_path = 'visualization_output/csv_data'
+    return {
+        'agent_records': pd.read_csv(f'{base_path}/agent_records.csv'),
+        'common_records': pd.read_csv(f'{base_path}/common_records.csv'),
+        'team_records': pd.read_csv(f'{base_path}/team_records.csv')
+    }
+
+# Load initial data
+data = load_data()
+agent_records = data['agent_records']
 
 # Initialize the Dash app
 app = dash.Dash(__name__)
 
 # Create the layout
 app.layout = html.Div([
+    dcc.Interval(
+        id='interval-component',
+        interval=5*1000,  # in milliseconds (5 seconds)
+        n_intervals=0
+    ),
     html.H1("Agent Performance Dashboard"),
     
     html.Div([
@@ -61,11 +74,14 @@ app.layout = html.Div([
 # Callback for score evolution with threshold overlay
 @app.callback(
     Output('score-evolution', 'figure'),
-    [Input('iteration-filter', 'value')]
+    [Input('iteration-filter', 'value'),
+     Input('interval-component', 'n_intervals')]
 )
-def update_score_evolution(iteration):
-    filtered_data = agent_records[agent_records['IterationNumber'] == iteration]
-    threshold_data = common_records[common_records['IterationNumber'] == iteration]
+def update_score_evolution(iteration, n_intervals):
+    # Reload data each time
+    data = load_data()
+    filtered_data = data['agent_records'][data['agent_records']['IterationNumber'] == iteration]
+    threshold_data = data['common_records'][data['common_records']['IterationNumber'] == iteration]
     
     fig = go.Figure()
     
@@ -92,10 +108,12 @@ def update_score_evolution(iteration):
                 plot_data = agent_data
                 
             if not plot_data.empty:
+                # Get the first row of agent_data to extract consistent metadata
+                agent_info = agent_data.iloc[0]
                 fig.add_trace(go.Scatter(
                     x=plot_data['TurnNumber'],
                     y=plot_data['Score'],
-                    name=f'Team {team_id} - Agent {agent_id[:8]}',
+                    name=f'T{team_id}_{agent_info["TeamID"][:4]}_{agent_info["SpecialNote"]}_{agent_id[:8]}',
                     mode='lines',
                     line=dict(color=team_color)
                 ))
@@ -216,7 +234,7 @@ def update_contribution_withdrawal(iteration):
     [Input('iteration-filter', 'value')]
 )
 def update_common_pool(iteration):
-    filtered_data = team_records[team_records['IterationNumber'] == iteration]
+    filtered_data = data['team_records'][data['team_records']['IterationNumber'] == iteration]
     
     fig = go.Figure()
     
