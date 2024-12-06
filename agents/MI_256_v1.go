@@ -260,7 +260,7 @@ func (mi *MI_256_v1) StickOrAgain(accumulatedScore int, prevRoll int) bool {
 	// the higher the mood, the more risky the roll dice strategy will be
 
 	threshLow := 8
-	threshMid := 11
+	threshMid := 12
 	threshHigh := 14
 	moodthresh := 10
 	if mi.mood > moodthresh { // be greedy
@@ -803,7 +803,7 @@ func (mi *MI_256_v1) RandomizeCharacter() {
 	mi.evilness = rand.Intn(3) + 1
 	mi.haveIlied = false
 	mi.Initialize_opninions()
-	mi.AoARanking = []int{4, 1, 2, 3, 4, 5}
+	mi.AoARanking = []int{4, 2, 3, 4, 5, 1}
 	mi.SetAoARanking(mi.AoARanking)
 }
 

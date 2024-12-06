@@ -2,7 +2,6 @@ package gameRecorder
 
 import (
 	"log"
-	"sort"
 )
 
 // --------- General External Functions ---------
@@ -64,18 +63,18 @@ func (sdr *ServerDataRecorder) RecordNewTurn(agentRecords []AgentRecord, teamRec
 }
 
 func (sdr *ServerDataRecorder) GamePlaybackSummary() {
-	log.Printf("\n\nGamePlaybackSummary - playing %v turn records\n", len(sdr.TurnRecords))
-	for _, turnRecord := range sdr.TurnRecords {
-		log.Printf("\nIteration %v, Turn %v:\n", turnRecord.IterationNumber, turnRecord.TurnNumber)
-		// Sort agent records by ID for consistent ordering
-		sort.Slice(turnRecord.AgentRecords, func(i, j int) bool {
-			return turnRecord.AgentRecords[i].AgentID.String() < turnRecord.AgentRecords[j].AgentID.String()
-		})
-		for _, agentRecord := range turnRecord.AgentRecords {
-			log.Printf("Agent %v: ", agentRecord.AgentID)
-			agentRecord.DebugPrint()
-		}
-	}
+	// log.Printf("\n\nGamePlaybackSummary - playing %v turn records\n", len(sdr.TurnRecords))
+	// for _, turnRecord := range sdr.TurnRecords {
+	// 	log.Printf("\nIteration %v, Turn %v:\n", turnRecord.IterationNumber, turnRecord.TurnNumber)
+	// 	// Sort agent records by ID for consistent ordering
+	// 	sort.Slice(turnRecord.AgentRecords, func(i, j int) bool {
+	// 		return turnRecord.AgentRecords[i].AgentID.String() < turnRecord.AgentRecords[j].AgentID.String()
+	// 	})
+	// 	for _, agentRecord := range turnRecord.AgentRecords {
+	// 		log.Printf("Agent %v: ", agentRecord.AgentID)
+	// 		agentRecord.DebugPrint()
+	// 	}
+	// }
 
 	// Create the HTML visualization
 	CreatePlaybackHTML(sdr)
