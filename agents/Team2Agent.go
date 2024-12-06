@@ -311,10 +311,6 @@ func (t2a *Team2Agent) VoteOnAgentEntry(candidateID uuid.UUID) bool {
 
 // ---------- DECISION TO STICK  ----------
 
-// func (t2a *Team2Agent) StickOrAgainFor(agentId uuid.UUID, accumulatedScore int, prevRoll int) int {
-// 	return 0
-// }
-
 // Function to retrieve ID and Score of all dead agents in team
 func (t2a *Team2Agent) GetDeadTeammates() []struct {
 	AgentID uuid.UUID
@@ -442,6 +438,38 @@ func (t2a *Team2Agent) StickOrAgain(accumulatedScore int, prevRoll int) bool {
 
 	log.Printf("*****Decision: Stick\n")
 	return true // Stick
+}
+
+func (t2a *Team2Agent) StickOrAgainFor(agentId uuid.UUID, accumulatedScore int, prevRoll int) int {
+
+	log.Printf("StickOrAgainFor called with agentId: %v, accumulatedScore: %d, prevRoll: %d", agentId, accumulatedScore, prevRoll)
+
+	if prevRoll == -1 {
+		prevRoll = 3
+	}
+
+	log.Printf("*****Total Score before deciding to re-roll or stick: %d\n", accumulatedScore)
+
+	log.Printf("*****Prev Roll: %d\n", prevRoll)
+
+	// Determine cumulative probability of improvement
+	cumulativeProbability := t2a.probabilityOfImprovement(prevRoll)
+	log.Printf("*****Cumulative Probability of Improvement: %.2f\n", cumulativeProbability)
+
+	log.Printf("*****Rank is: %t\n", t2a.rank) // true is leader, false is citizen
+
+	// Determine agent risk tolerance (lower riskTolerance value indicates more risky, higher indicates more risk averse)
+	riskTolerance := t2a.DetermineRiskTolerance(accumulatedScore)
+	log.Printf("*****Risk Tolerance: %.2f\n", riskTolerance)
+
+	// Leader is very risky and has a fixed riskTolerance of 0.8
+	riskTolerance = 0.8
+	threshold := float64(prevRoll) * (1.0 - riskTolerance)
+	if (cumulativeProbability * 18) > threshold {
+		log.Printf("*****Decision: Re-roll\n")
+		return 0 // Re-roll
+	}
+	return 1 // Stick
 }
 
 // Function guesses threshold based on highest dead agent score and current agent score

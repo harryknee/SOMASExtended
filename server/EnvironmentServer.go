@@ -88,6 +88,7 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 		auditResult := team.TeamAoA.GetContributionAuditResult(agentToAudit)
 
 		if auditResult {
+			cs.ApplyPunishment(team, agentToAudit)
 			if team.TeamAoAID == 2 {
 				if agentToAudit == team.TeamAoA.(*common.Team2AoA).GetLeader() {
 					cs.ElectNewLeader(team.TeamID)
@@ -96,7 +97,6 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 					cs.RemoveAgentFromTeam(agentToAudit)
 				}
 			}
-			cs.ApplyPunishment(team, agentToAudit)
 		}
 
 		for _, agentID := range team.Agents {
@@ -159,6 +159,8 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 		auditResult := team.TeamAoA.GetWithdrawalAuditResult(agentToAudit)
 
 		if auditResult {
+			cs.ApplyPunishment(team, agentToAudit)
+
 			if team.TeamAoAID == 2 {
 				if agentToAudit == team.TeamAoA.(*common.Team2AoA).GetLeader() {
 					cs.ElectNewLeader(team.TeamID)
@@ -167,7 +169,6 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 					cs.RemoveAgentFromTeam(agentToAudit)
 				}
 			}
-			cs.ApplyPunishment(team, agentToAudit)
 		}
 
 		for _, agentID := range team.Agents {
@@ -619,8 +620,8 @@ func (cs *EnvironmentServer) allocateAoAs() {
 				team.TeamAoA = common.CreateTeam5AoA()
 				team.TeamAoAID = 5
 			case 6:
-				team.TeamAoA = common.CreateFixedAoA(1)
-				team.TeamAoAID = 0
+				team.TeamAoA = common.CreateTeam6AoA()
+				team.TeamAoAID = 6
 			default:
 				team.TeamAoA = common.CreateFixedAoA(1)
 				team.TeamAoAID = 0
@@ -1142,6 +1143,10 @@ func (cs *EnvironmentServer) ProcessAgentsLeaving() {
 
 func (cs *EnvironmentServer) ApplyPunishment(team *common.Team, agentToAudit uuid.UUID) {
 	agent := cs.GetAgentMap()[agentToAudit]
+
+	if agent == nil {
+		return
+	}
 
 	if agent.HasTeam() {
 		agentScore := agent.GetTrueScore()
