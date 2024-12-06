@@ -87,8 +87,10 @@ func Team4_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent
 	}
 	mi_256.TrueSomasTeamID = 4 // IMPORTANT: add your team number here!
 	mi_256.RandomizeCharacter()
-	mi_256.chaoticness = team4Config.Chaoticness
-	mi_256.evilness = team4Config.Evilness
+	if &team4Config != nil {
+		mi_256.chaoticness = team4Config.Chaoticness
+		mi_256.evilness = team4Config.Evilness
+	}
 	mi_256.teamAgentsDeclaredRolls = make(map[uuid.UUID]int)
 	mi_256.teamAgentsDeclaredContribution = make(map[uuid.UUID]int)
 	mi_256.teamAgentsDeclaredWithdraw = make(map[uuid.UUID]int)

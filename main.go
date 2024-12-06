@@ -48,14 +48,14 @@ func main() {
 	}
 
 	team4_evil := agents.Team4Config{
-		Chaoticness: 2, // from 1 to 3, 3 being most chaotic
-		Evilness:    2, // from 1 to 3, 3 being most evil
+		Chaoticness: 3, // from 1 to 3, 3 being most chaotic
+		Evilness:    3, // from 1 to 3, 3 being most evil
 	}
 
-	// team4_lawful := agents.Team4Config{
-	// 	Chaoticness: 1, // from 1 to 3, 3 being most chaotic
-	// 	Evilness:    1, // from 1 to 3, 3 being most evil
-	// }
+	team4_lawful := agents.Team4Config{
+		Chaoticness: 1, // from 1 to 3, 3 being most chaotic
+		Evilness:    1, // from 1 to 3, 3 being most evil
+	}
 
 	serv := &envServer.EnvironmentServer{
 		// note: the zero turn is used for team forming
@@ -71,16 +71,28 @@ func main() {
 	)
 	serv.SetGameRunner(serv)
 
-	const numAgents int = 10
+	// const numAgents int = 10
 
 	agentPopulation := []common.IExtendedAgent{}
-	for i := 0; i < numAgents; i++ {
-		agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig, team4_evil))
-		// agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig, team4_lawful))
-		agentPopulation = append(agentPopulation, agents.Create_Team1Agent(serv, agentConfig))
-		// agentPopulation = append(agentPopulation, agents.GetBaseAgents(serv, agentConfig))
-		// Add other teams' agents here
-	}
+	// for i := 0; i < numAgents; i++ {
+	// 	agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig, team4_evil))
+	// 	// agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig, team4_lawful))
+	// 	agentPopulation = append(agentPopulation, agents.Create_Team1Agent(serv, agentConfig))
+	// 	// agentPopulation = append(agentPopulation, agents.GetBaseAgents(serv, agentConfig))
+	// 	// Add other teams' agents here
+	// }
+
+	agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig, team4_evil))
+	agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig, team4_evil))
+	agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig, team4_evil))
+	agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig, team4_evil))
+	agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig, team4_evil))
+
+	agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig, team4_lawful))
+	agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig, team4_lawful))
+	agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig, team4_lawful))
+	agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig, team4_lawful))
+	agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig, team4_lawful))
 
 	for i, agent := range agentPopulation {
 		agent.SetName(i)
