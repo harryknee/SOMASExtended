@@ -60,32 +60,6 @@ app.layout = html.Div([
     html.H1("Agent Performance Dashboard"),
     
     html.Div([
-<<<<<<< Updated upstream
-        html.Div([
-            html.H3("Score Evolution Over Time"),
-            dcc.Graph(id='score-evolution'),
-        ], className='graph-container'),
-        
-        html.Div([
-            html.H3("Contribution vs Withdrawal"),
-            dcc.Graph(id='contribution-withdrawal'),
-        ], className='graph-container'),
-        
-        html.Div([
-            html.H3("Common Pool Evolution"),
-            dcc.Graph(id='common-pool'),
-        ], className='graph-container'),
-        
-        html.Div([
-            html.H3("Agent Status"),
-            dcc.Graph(id='agent-status'),
-        ], className='graph-container'),
-    ]),
-    
-    # Add filters
-    html.Div([
-=======
->>>>>>> Stashed changes
         html.H3("Filters"),
         dcc.Dropdown(
             id='iteration-filter',
@@ -355,8 +329,6 @@ def update_agent_status(iteration):
         
     return fig
 
-<<<<<<< Updated upstream
-=======
 # Add new callback for team-based score evolution
 @app.callback(
     Output('score-evolution-by-team', 'figure'),
@@ -590,7 +562,6 @@ def update_individual_net_contributions(iteration, n_intervals):
     
     return fig
 
->>>>>>> Stashed changes
 # Add some CSS styling
 app.index_string = '''
 <!DOCTYPE html>
