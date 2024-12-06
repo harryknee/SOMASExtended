@@ -36,9 +36,18 @@ type AgentType int
 
 const (
 	// iota automatically increments the value by 1 for each constant, starting from 0.
-	Honest         AgentType = iota // Honest (Value: 0): Agents who always state what they actually contributed. Withdraw as per their expected withdrawal.
-	CheatLongTerm                   // CheatLongTerm (Value: 1): Agents who always contribute honestly. After rising in rank, they start withdrawing more than allowed.
-	CheatShortTerm                  // CheatShortTerm (Value: 2): Agents who immediately start cheating. They overstate their contributions and withdraw more than allowed.
+
+    // Honest (Value: 0): Agents who always state what they actually contributed.
+    // Withdraw as per their expected withdrawal.
+	Honest AgentType = iota 
+
+    // CheatLongTerm (Value: 1): Agents who always contribute honestly. After
+    // rising in rank, they start withdrawing more than allowed.
+	CheatLongTerm                   
+
+    // CheatShortTerm (Value: 2): Agents who immediately start cheating. They
+    // overstate their contributions and withdraw more than allowed.
+	CheatShortTerm                  
 )
 
 type Team1Agent struct {
@@ -295,6 +304,7 @@ func Create_Team1Agent(funcs baseAgent.IExposedServerFunctions[common.IExtendedA
 	return &Team1Agent{
 		ExtendedAgent: GetBaseAgents(funcs, agentConfig),
 		memory:        make(map[uuid.UUID]AgentMemory),
+		agentType:        CheatShortTerm,
 	}
 }
 
