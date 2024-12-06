@@ -389,6 +389,9 @@ func (mi *MI_256_v1) DecideContribution() int {
 			mi.declaredcontribution = rand.Intn(11) + 2
 		}
 	}
+	if mi.intendedContribution < mi.AoAExpectedContribution {
+		mi.haveIlied = true
+	}
 
 	return mi.intendedContribution
 }
@@ -485,6 +488,9 @@ func (mi *MI_256_v1) DecideWithdrawal() int {
 		mi.declaredWithdrawal = min(mi.IntendedWithdrawal, mi.AoAExpectedWithdrawal)
 	} else {
 		mi.declaredWithdrawal = mi.IntendedWithdrawal
+	}
+	if mi.IntendedWithdrawal > mi.AoAExpectedContribution {
+		mi.haveIlied = true
 	}
 
 	// TODO: implement contribution strategy
@@ -870,6 +876,14 @@ func (mi *MI_256_v1) UpdateMoodAfterRoundEnd() {
 		//else you feel confident about your current mood
 		mi.mood += teamPerformanceModifier * (mi.chaoticness)
 
+	}
+	// if lying and not caught, be more adventurous, else no.
+	lyingModifier := 1
+	if mi.haveIlied && mi.IcaughtLying {
+		// mood decreases
+		mi.mood -= lyingModifier * mi.chaoticness
+	} else if mi.haveIlied && !mi.IcaughtLying {
+		mi.mood += lyingModifier * mi.chaoticness
 	}
 	// you calculate everyone's declared net gain,
 
