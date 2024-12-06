@@ -36,7 +36,7 @@ func CreateTestServer() (*envServer.EnvironmentServer, []uuid.UUID) {
 	}
 	serv.SetGameRunner(serv)
 
-	const numAgents int = 2
+	const numAgents int = 10
 
 	agentPopulation := []common.IExtendedAgent{}
 	for i := 0; i < numAgents; i++ {
@@ -175,9 +175,12 @@ func TestAllocateOrphans(t *testing.T) {
 	orphan2 := agentIDs[1]
 	teamID := serv.CreateAndInitTeamWithAgents(agentIDs[2:])
 
+	team := serv.GetTeamFromTeamID(teamID)
+
+	team.TeamAoAID = 1
 	// Set the preferences of these agents to the team ID
-	agent_map[orphan1].SetTeamRanking([]uuid.UUID{teamID})
-	agent_map[orphan2].SetTeamRanking([]uuid.UUID{teamID})
+	agent_map[orphan1].SetAoARanking([]int{1})
+	agent_map[orphan2].SetAoARanking([]int{1})
 
 	// Sweep and add these orphans to the orphan pool (this function would
 	// normally be called inside RunTurn())

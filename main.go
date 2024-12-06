@@ -50,10 +50,10 @@ func main() {
 	serv := &envServer.EnvironmentServer{
 		// note: the zero turn is used for team forming
 		BaseServer: baseServer.CreateBaseServer[common.IExtendedAgent](
-			1,                     //  iterations
-			5,                     //  turns per iteration
-			1000*time.Millisecond, //  max duration
-			10),                   //  message bandwidth
+			2,                   //  iterations
+			100,                 //  turns per iteration
+			50*time.Millisecond, //  max duration
+			10),                 //  message bandwidth
 		Teams: make(map[uuid.UUID]*common.Team),
 	}
 	serv.Init(
@@ -66,11 +66,13 @@ func main() {
 	agentPopulation := []common.IExtendedAgent{}
 	for i := 0; i < numAgents; i++ {
 		agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig))
+		agentPopulation = append(agentPopulation, agents.Create_Team1Agent(serv, agentConfig))
 		// agentPopulation = append(agentPopulation, agents.GetBaseAgents(serv, agentConfig))
 		// Add other teams' agents here
 	}
 
-	for _, agent := range agentPopulation {
+	for i, agent := range agentPopulation {
+		agent.SetName(i)
 		serv.AddAgent(agent)
 	}
 
