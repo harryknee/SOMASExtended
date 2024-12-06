@@ -1,7 +1,7 @@
 package common
 
 import (
-	"fmt"
+	"log"
 	"sort"
 
 	"github.com/google/uuid"
@@ -134,17 +134,17 @@ func (t *Team4AoA) Team4_SetRankUp(rankUpVoteMap map[uuid.UUID]map[uuid.UUID]int
 	}
 	threshold := t.GetRankUpThreshold()
 
-	fmt.Printf("Rank Up Vote Threshold = %d approvals\n", threshold)
+	log.Printf("Rank Up Vote Threshold = %d approvals\n", threshold)
 
 	for agentID, approvalCount := range approvalCounts {
 
 		if approvalCount >= threshold {
-			fmt.Printf("Agent %v: Meets threshold, ranking up!\n", agentID)
+			log.Printf("Agent %v: Meets threshold, ranking up!\n", agentID)
 
 			// If the agent has enough approvals, rank them up
 			t.RankUp(agentID)
 			adventurer := t.Adventurers[agentID]
-			fmt.Printf("Agent %v: New Rank = %s\n", agentID, adventurer.Rank)
+			log.Printf("Agent %v: New Rank = %s\n", agentID, adventurer.Rank)
 
 		}
 	}
@@ -262,13 +262,13 @@ func (t *Team4AoA) Team4_RunProposedWithdrawalVote(proposedWithdrawalMap map[uui
 				// Update the agent's expected withdrawal if their vote weight meets the threshold
 				adventurer := t.Adventurers[agentID]
 
-				fmt.Printf("Agent %v: Current ExpectedWithdrawal = %d, Proposed = %d\n", agentID, adventurer.ExpectedWithdrawal, proposedWithdrawal)
+				log.Printf("Agent %v: Current ExpectedWithdrawal = %d, Proposed = %d\n", agentID, adventurer.ExpectedWithdrawal, proposedWithdrawal)
 
 				oldWithdrawal := adventurer.ExpectedWithdrawal
 
 				adventurer.ExpectedWithdrawal = proposedWithdrawal
 
-				fmt.Printf("Agent %v: Proposed Withdrawal Accepted, changed from %d to %d\n", agentID, oldWithdrawal, adventurer.ExpectedWithdrawal)
+				log.Printf("Agent %v: Proposed Withdrawal Accepted, changed from %d to %d\n", agentID, oldWithdrawal, adventurer.ExpectedWithdrawal)
 
 				// Update the agent in the Adventurers map
 				t.Adventurers[agentID] = adventurer
