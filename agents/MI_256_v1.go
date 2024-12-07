@@ -753,6 +753,9 @@ func (mi *MI_256_v1) BuildVotemap(IsHarmfulIntent bool) map[uuid.UUID]float64 {
 		Apply_mood(audit_percentage, abs_neutral_mean)
 		auditmap[agent] = audit_percentage
 
+		if agent == mi.GetID() {
+			auditmap[agent] = 0 // you should never audit yourself!
+		}
 	}
 
 	return auditmap
