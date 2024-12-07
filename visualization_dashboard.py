@@ -31,7 +31,7 @@ app = dash.Dash(__name__)
 app.layout = html.Div([
     dcc.Interval(
         id='interval-component',
-        interval=5*1000,  # in milliseconds (5 seconds)
+        interval=50*1000,  # in milliseconds (5 seconds)
         n_intervals=0
     ),
     html.H1("Agent Performance Dashboard"),

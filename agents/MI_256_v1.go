@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"strconv"
 
 	common "github.com/ADimoska/SOMASExtended/common"
+	gameRecorder "github.com/ADimoska/SOMASExtended/gameRecorder"
 
 	"github.com/MattSScott/basePlatformSOMAS/v2/pkg/agent"
 	"github.com/google/uuid"
@@ -102,6 +104,22 @@ func Team4_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent
 
 	fmt.Println(mi_256.GetID(), " has been created. Chaoticness:", mi_256.chaoticness, "Evilness:", mi_256.evilness)
 	return mi_256
+}
+
+func (mi *MI_256_v1) RecordAgentStatus(instance common.IExtendedAgent) gameRecorder.AgentRecord {
+	fmt.Println("Recording agent status override")
+	record := gameRecorder.NewAgentRecord(
+		instance.GetID(),
+		instance.GetTrueSomasTeamID(),
+		instance.GetTrueScore(),
+		instance.GetStatedContribution(instance),
+		instance.GetActualContribution(instance),
+		instance.GetActualWithdrawal(instance),
+		instance.GetStatedWithdrawal(instance),
+		instance.GetTeamID(),
+		"E"+strconv.Itoa(mi.evilness)+"_C"+strconv.Itoa(mi.chaoticness),
+	)
+	return record
 }
 
 // ----------------------- Function Override -----------------------
