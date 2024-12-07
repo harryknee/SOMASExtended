@@ -78,6 +78,7 @@ func (mi *MI_256_v1) print_alignment() {
 }
 
 type Team4Config struct {
+	IsRandom    bool
 	Chaoticness int // from 1 to 3, 3 being most chaotic
 	Evilness    int // from 1 to 3, 3 being most evil
 }
@@ -88,8 +89,9 @@ func Team4_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent
 		ExtendedAgent: GetBaseAgents(funcs, agentConfig),
 	}
 	mi_256.TrueSomasTeamID = 4 // IMPORTANT: add your team number here!
+
 	mi_256.RandomizeCharacter()
-	if &team4Config != nil {
+	if !team4Config.IsRandom {
 		mi_256.chaoticness = team4Config.Chaoticness
 		mi_256.evilness = team4Config.Evilness
 	}
@@ -106,8 +108,9 @@ func Team4_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent
 	return mi_256
 }
 
+// ----------------------- Function Override -----------------------
+
 func (mi *MI_256_v1) RecordAgentStatus(instance common.IExtendedAgent) gameRecorder.AgentRecord {
-	fmt.Println("Recording agent status override")
 	record := gameRecorder.NewAgentRecord(
 		instance.GetID(),
 		instance.GetTrueSomasTeamID(),
@@ -122,7 +125,6 @@ func (mi *MI_256_v1) RecordAgentStatus(instance common.IExtendedAgent) gameRecor
 	return record
 }
 
-// ----------------------- Function Override -----------------------
 func (mi *MI_256_v1) SetAgentContributionAuditResult(agentID uuid.UUID, result bool) {
 	mi.lastAuditTarget = agentID
 	mi.lastAuditResult = result
@@ -283,7 +285,7 @@ func (mi *MI_256_v1) StickOrAgain(accumulatedScore int, prevRoll int) bool {
 
 	// the higher the mood, the more risky the roll dice strategy will be
 
-	threshLow := 8
+	threshLow := 9
 	threshMid := 12
 	threshHigh := 14
 	moodthresh := 10
@@ -856,11 +858,10 @@ func (mi *MI_256_v1) Team4_GetProposedWithdrawalVote() map[uuid.UUID]int {
 // ---------------------------------------------------------------
 func (mi *MI_256_v1) RandomizeCharacter() {
 	mi.chaoticness = rand.Intn(3) + 1
-
 	mi.evilness = rand.Intn(3) + 1
 	mi.haveIlied = false
 	mi.Initialize_opninions()
-	mi.AoARanking = []int{4, 2, 3, 4, 5, 1}
+	mi.AoARanking = []int{4, 1, 2, 3, 4, 5}
 	mi.SetAoARanking(mi.AoARanking)
 }
 
