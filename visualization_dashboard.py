@@ -137,7 +137,7 @@ def update_score_evolution(iteration, n_intervals):
                 fig.add_trace(go.Scatter(
                     x=plot_data['TurnNumber'],
                     y=plot_data['Score'],
-                    name=f'T{team_id}_{agent_info["TeamID"][:4]}_{agent_id[:8]}',
+                    name=f'T{team_id}_{agent_info["SpecialNote"]}_{agent_info["TeamID"][:4]}_{agent_id[:8]}',
                     mode='lines',
                     line=dict(color=team_color)
                 ))
@@ -375,7 +375,7 @@ def update_score_evolution_by_team(iteration, n_intervals):
                 fig.add_trace(go.Scatter(
                     x=plot_data['TurnNumber'],
                     y=plot_data['Score'],
-                    name=f'T{agent_info["TrueSomasTeamID"]}_{team_id[:4]}_{agent_id[:8]}',
+                    name=f'T{agent_info["TrueSomasTeamID"]}_{agent_info["SpecialNote"]}_{team_id[:4]}_{agent_id[:8]}',
                     mode='lines',
                     line=dict(color=team_color)
                 ))
@@ -521,7 +521,7 @@ def update_individual_net_contributions(iteration, n_intervals):
                 fig.add_trace(go.Scatter(
                     x=plot_data['TurnNumber'],
                     y=plot_data['NetContribution'],
-                    name=f'T{team_id}_{agent_info["TeamID"][:4]}_{agent_id[:8]}',
+                    name=f'T{team_id}_{agent_info["SpecialNote"]}_{agent_info["TeamID"][:4]}_{agent_id[:8]}',
                     mode='lines',
                     line=dict(color=team_color)
                 ))
