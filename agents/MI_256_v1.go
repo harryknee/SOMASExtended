@@ -74,7 +74,7 @@ type MI_256_v1 struct {
 }
 
 func (mi *MI_256_v1) print_alignment() {
-	fmt.Println(mi.GetID(), " has been created. Chaoticness:", mi.chaoticness, "Evilness:", mi.evilness)
+	fmt.Println(mi.GetID(), " has alignment Chaoticness:", mi.chaoticness, "Evilness:", mi.evilness)
 }
 
 type Team4Config struct {

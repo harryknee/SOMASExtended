@@ -83,10 +83,10 @@ func main() {
 	// }
 
 	agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig, team4_evil))
-	agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig, team4_evil))
-	agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig, team4_evil))
-	agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig, team4_evil))
-	agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig, team4_evil))
+	// agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig, team4_evil))
+	// agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig, team4_evil))
+	// agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig, team4_evil))
+	// agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig, team4_evil))
 
 	agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig, team4_lawful))
 	agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig, team4_lawful))
