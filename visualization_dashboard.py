@@ -1,3 +1,4 @@
+import sys
 import pandas as pd
 import dash
 from dash import dcc, html
@@ -18,10 +19,11 @@ last_data_hash = None
 cached_data = None
 
 # Move the data loading into a function
-def load_data():
+def load_data(subfolder=''):
     global last_data_hash, cached_data
     
     base_path = 'visualization_output/csv_data'
+    base_path = base_path + '/' + subfolder
     current_data = {
         'agent_records': pd.read_csv(f'{base_path}/agent_records.csv'),
         'common_records': pd.read_csv(f'{base_path}/common_records.csv'),
@@ -35,16 +37,20 @@ def load_data():
     current_hash = hashlib.md5(hash_string.encode()).hexdigest()
     
     # If the hash matches, return cached data
-    if last_data_hash == current_hash and cached_data is not None:
-        return cached_data
+    # if last_data_hash == current_hash and cached_data is not None:
+    #     return cached_data
     
     # Otherwise, update cache and return new data
     last_data_hash = current_hash
     cached_data = current_data
     return current_data
 
+# Use the data path from command-line arguments
+subfolder = "experiment_"+str(sys.argv[1]) if len(sys.argv) > 1 else ''
+print(f"Using data from subfolder: {subfolder}")
+
 # Load initial data
-data = load_data()
+data = load_data(subfolder)
 agent_records = data['agent_records']
 
 # Initialize the Dash app
