@@ -149,6 +149,7 @@ func (mi *MI_256_v1) UpdateTeamDeclaredWithdrawal() {
 	}
 }
 
+// Exported state update handlers
 func (mi *MI_256_v1) Team4_UpdateStateAfterContribution() {
 	mi.UpdateTeamDeclaredContribution()
 	mi.UpdateAffinityAfterContribute()
@@ -310,8 +311,6 @@ func (mi *MI_256_v1) StickOrAgain(accumulatedScore int, prevRoll int) bool {
 	}
 
 }
-
-// !!! NOTE: name and signature of functions below are subject to change by the infra team !!!
 
 // definition of Evilness: The more he would value his own benifit over others.
 // definition of Chaoticness: The willingness to take risk to breach the AoA
@@ -549,6 +548,7 @@ func (mi *MI_256_v1) GetActualWithdrawal(instance common.IExtendedAgent) int {
 	}
 	commonPool := mi.Server.GetTeam(mi.GetID()).GetCommonPool()
 	mi.AoAExpectedWithdrawal = mi.CalcAOAWithdrawal()
+	// Urge to withdraw more if the score is low, survival instinct exists for all agents
 	if mi.Score < mi.lastThreshold+5 {
 		mi.IntendedWithdrawal = mi.DecideWithdrawal((commonPool))
 	} else {
