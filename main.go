@@ -98,7 +98,7 @@ func main() {
 	}
 	agentPopulations = append(agentPopulations, agentPopulation)
 
-	// experiment 1-12, evil vs good ()
+	// experiment 1-11, evil vs good
 	// prop increases in 10% increments
 	for evilProp := 0; evilProp < 11; evilProp++ {
 		// create a fresh server

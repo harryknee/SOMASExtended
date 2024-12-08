@@ -1,3 +1,4 @@
+import os
 import sys
 import pandas as pd
 import dash
@@ -19,11 +20,11 @@ last_data_hash = None
 cached_data = None
 
 # Move the data loading into a function
-def load_data(subfolder=''):
+def load_data(subfolder=None):
     global last_data_hash, cached_data
     
     base_path = 'visualization_output/csv_data'
-    base_path = base_path + '/' + subfolder
+    base_path = os.path.join(base_path, subfolder) if subfolder else base_path
     current_data = {
         'agent_records': pd.read_csv(f'{base_path}/agent_records.csv'),
         'common_records': pd.read_csv(f'{base_path}/common_records.csv'),
@@ -46,7 +47,7 @@ def load_data(subfolder=''):
     return current_data
 
 # Use the data path from command-line arguments
-subfolder = "experiment_"+str(sys.argv[1]) if len(sys.argv) > 1 else ''
+subfolder = "experiment_"+str(sys.argv[1]) if len(sys.argv) > 1 else None
 print(f"Using data from subfolder: {subfolder}")
 
 # Load initial data
@@ -107,7 +108,7 @@ app.layout = html.Div([
 )
 def update_score_evolution(iteration, n_intervals):
     # Reload data each time
-    data = load_data()
+    data = load_data(subfolder)
     filtered_data = data['agent_records'][data['agent_records']['IterationNumber'] == iteration]
     threshold_data = data['common_records'][data['common_records']['IterationNumber'] == iteration]
     
@@ -343,7 +344,7 @@ def update_agent_status(iteration):
 )
 def update_score_evolution_by_team(iteration, n_intervals):
     # Reload data each time
-    data = load_data()
+    data = load_data(subfolder)
     filtered_data = data['agent_records'][data['agent_records']['IterationNumber'] == iteration]
     threshold_data = data['common_records'][data['common_records']['IterationNumber'] == iteration]
     
@@ -491,7 +492,7 @@ def update_score_evolution_by_team(iteration, n_intervals):
 )
 def update_individual_net_contributions(iteration, n_intervals):
     # Reload data each time
-    data = load_data()
+    data = load_data(subfolder)
     filtered_data = data['agent_records'][data['agent_records']['IterationNumber'] == iteration]
     
     fig = go.Figure()
