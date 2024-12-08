@@ -24,7 +24,7 @@ for exp_id in experiment_ids:
     # Assuming SpecialNote field exists and encodes alignment like 'E1_C1' for good, 'E3_C1' for evil.
     agents_df['Alignment'] = agents_df['SpecialNote'].apply(
         lambda note: 'Good' if isinstance(note, str) and note.startswith('E1') else
-                     ('Evil' if isinstance(note, str) and note.startswith('E3') else 'Other')
+                     ('Evil' if isinstance(note, str) and note.startswith('E3') else 'Neutral')
     )
     
     # Group by AgentID and determine survival for each agent
@@ -39,6 +39,7 @@ for exp_id in experiment_ids:
     # Create separate arrays for good and evil agents
     good_survivals = agent_survival[agent_alignment == 'Good']
     evil_survivals = agent_survival[agent_alignment == 'Evil']
+    neutral_survivals = agent_survival[agent_alignment == 'Neutral']
 
     # Compute E3 proportion based on experiment ID:
     if exp_id == 0:
@@ -62,6 +63,14 @@ for exp_id in experiment_ids:
     else:
         evil_mean = evil_min = evil_max = None
 
+    # Compute statistics for neutral agents
+    if len(neutral_survivals) > 0:
+        neutral_mean = neutral_survivals.mean()
+        neutral_min = neutral_survivals.min()
+        neutral_max = neutral_survivals.max()
+    else:
+        neutral_mean = neutral_min = neutral_max = None
+
     survival_data.append({
         'ExperimentID': exp_id,
         'E3_Proportion_%': e3_prop,
@@ -70,7 +79,10 @@ for exp_id in experiment_ids:
         'Good_max': good_max,
         'Evil_mean': evil_mean,
         'Evil_min': evil_min,
-        'Evil_max': evil_max
+        'Evil_max': evil_max,
+        'Neutral_mean': neutral_mean,
+        'Neutral_min': neutral_min,
+        'Neutral_max': neutral_max
     })
 
 # Create a DataFrame of the results
@@ -89,18 +101,27 @@ good_y = comparison_df['Good_mean']
 good_x = comparison_df['E3_Proportion_%']
 good_yerr = [good_y - comparison_df['Good_min'], comparison_df['Good_max'] - good_y]
 
-plt.errorbar(good_x, good_y, yerr=good_yerr, fmt='-o', label='Good Agents', capsize=5, alpha=0.8, color='blue')
+plt.errorbar(good_x, good_y, yerr=good_yerr, fmt='-o', label='Good Agents', capsize=5, alpha=0.9, color='blue')
 
 # For evil agents:
 evil_y = comparison_df['Evil_mean']
 evil_x = comparison_df['E3_Proportion_%']
 evil_yerr = [evil_y - comparison_df['Evil_min'], comparison_df['Evil_max'] - evil_y]
 
-plt.errorbar(evil_x, evil_y, yerr=evil_yerr, fmt='-o', label='Evil Agents', capsize=5, alpha=0.8, color='red')
+plt.errorbar(evil_x, evil_y, yerr=evil_yerr, fmt='-o', label='Evil Agents', capsize=5, alpha=0.9, color='red')
 
-plt.title('Survival Turns by Agent Alignment vs. Evilness Percentage (C=1, E1↔E3 Mix)')
+plt.title('Survival Turns by Agent Alignment vs. Evilness Percentage (C=3, E1↔E3 Mix)')
 plt.xlabel('Evilness (E3) Proportion (%)')
 plt.ylabel('Survival Turns (Mean ± Range)')
+
+# Add dashed line for baseline (experiment_0)
+baseline_survival_df = survival_df[survival_df['ExperimentID'] == 0]
+neutral_mean = baseline_survival_df['Neutral_mean'].values[0]
+neutral_max = baseline_survival_df['Neutral_max'].values[0]
+neutral_min = baseline_survival_df['Neutral_min'].values[0]
+plt.axhline(y=neutral_mean, color='black', linestyle='--', alpha=0.5, label='Baseline: Neutral Agents')
+plt.axhline(y=neutral_max, color='black', linestyle='--', alpha=0.5)
+plt.axhline(y=neutral_min, color='black', linestyle='--', alpha=0.5)
 
 plt.legend()
 plt.tight_layout()
