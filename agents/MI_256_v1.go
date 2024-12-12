@@ -285,12 +285,24 @@ func (mi *MI_256_v1) StickOrAgain(accumulatedScore int, prevRoll int) bool {
 
 }
 
+func (mi *MI_256_v1) calculateAverageAffinity() float64 {
+
+	sum := 0
+	numAgent := 0
+	for _, agent := range mi.Server.GetTeam(mi.GetID()).Agents {
+		sum += mi.affinity[agent]
+		numAgent += 1
+	}
+	return float64(sum) / float64(numAgent)
+}
+
 // !!! NOTE: name and signature of functions below are subject to change by the infra team !!!
 
 // definition of Evilness: The more he would value his own benifit over others.
 // definition of Chaoticness: The willingness to take risk to breach the AoA
 // definition of Mood: The willingness to take actions which diverges from abosolute neutral
 // Contribution Strategy
+
 func (mi *MI_256_v1) DecideContribution() int {
 	mi.CalcAOAContibution()
 	if mi.Score == 0 || mi.AoAExpectedContribution == 0 {
@@ -327,9 +339,17 @@ func (mi *MI_256_v1) DecideContribution() int {
 
 	Apply_mood := func(contribute_percentage float64) float64 {
 		if contribute_percentage > float64(neutral_mean) {
-			return contribute_percentage + mood_modifier
+			return max(contribute_percentage+mood_modifier, float64(neutral_mean))
 		} else {
-			return contribute_percentage - mood_modifier
+			return max(min(contribute_percentage-mood_modifier, float64(neutral_mean)), 0)
+		}
+	}
+	avg_affinity := mi.calculateAverageAffinity()
+	Apply_avg_Affinity := func(contribute_percentage float64) float64 {
+		if contribute_percentage > float64(neutral_mean) {
+			return max(contribute_percentage+avg_affinity, float64(neutral_mean))
+		} else {
+			return max(min(contribute_percentage-avg_affinity, float64(neutral_mean)), 0)
 		}
 	}
 
@@ -381,6 +401,7 @@ func (mi *MI_256_v1) DecideContribution() int {
 		}
 	}
 	contribute_percentage = Apply_mood(contribute_percentage)
+	contribute_percentage = Apply_avg_Affinity(contribute_percentage)
 	fmt.Println(mi.GetID(), " contribution percentage", contribute_percentage)
 	mi.print_alignment()
 	mi.intendedContribution = min(max(int(math.Round(float64(contribute_percentage)*float64(min(mi.Score, 2*mi.AoAExpectedContribution)))), 0), mi.Score)
@@ -438,11 +459,19 @@ func (mi *MI_256_v1) DecideWithdrawal() int {
 	lawful_good_standard_deviation := 1.0 / 16 * (1 - neutral_mean)
 	lawful_evil_standard_deviation := 1.0 / 8 * neutral_mean
 
-	Apply_mood := func(Withdrawal_percentage float64) float64 {
-		if Withdrawal_percentage > float64(neutral_mean) {
-			return Withdrawal_percentage + mood_modifier
+	Apply_mood := func(withdrawal_percentage float64) float64 {
+		if withdrawal_percentage > float64(neutral_mean) {
+			return max(withdrawal_percentage+mood_modifier, float64(neutral_mean))
 		} else {
-			return Withdrawal_percentage - mood_modifier
+			return max(min(withdrawal_percentage-mood_modifier, float64(neutral_mean)), 0)
+		}
+	}
+	avg_affinity := mi.calculateAverageAffinity()
+	Apply_avg_Affinity := func(withdrawal_percentage float64) float64 {
+		if withdrawal_percentage > float64(neutral_mean) {
+			return max(withdrawal_percentage+avg_affinity, float64(neutral_mean))
+		} else {
+			return max(min(withdrawal_percentage-avg_affinity, float64(neutral_mean)), 0)
 		}
 	}
 	if mi.evilness == 2 { // if agent has neutral evilness, use neutral mean
@@ -485,6 +514,8 @@ func (mi *MI_256_v1) DecideWithdrawal() int {
 		}
 	}
 	Withdrawal_percentage = Apply_mood(Withdrawal_percentage)
+	Withdrawal_percentage = Apply_avg_Affinity(Withdrawal_percentage)
+
 	fmt.Println(mi.GetID(), " withdrawal percentage", Withdrawal_percentage)
 	mi.print_alignment()
 	mi.IntendedWithdrawal = max(int(math.Round(float64(Withdrawal_percentage)*float64(mi.AoAExpectedWithdrawal*2))), 0)
