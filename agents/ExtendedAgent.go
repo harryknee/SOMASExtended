@@ -574,6 +574,7 @@ func (mi *ExtendedAgent) RecordAgentStatus(instance common.IExtendedAgent) gameR
 		instance.GetActualWithdrawal(instance),
 		instance.GetStatedWithdrawal(instance),
 		instance.GetTeamID(),
+		"1",
 	)
 	return record
 }
@@ -597,4 +598,26 @@ func (mi *ExtendedAgent) Team2_GetLeaderVote() common.Vote {
 	leader := agentsInTeam[rand.Intn(len(agentsInTeam))]
 
 	return common.CreateVote(1, mi.GetID(), leader)
+}
+
+func (mi *ExtendedAgent) Team4_UpdateStateAfterContribution() {
+	// overwrite if your agent need to update internal state at this stage.
+}
+func (mi *ExtendedAgent) Team4_UpdateStateAfterWithdrawal() {
+	// overwrite if your agent need to update internal state at this stage.
+}
+func (mi *ExtendedAgent) Team4_UpdateStateAfterContributionAudit() {
+	// overwrite if your agent need to update internal state at this stage.
+}
+func (mi *ExtendedAgent) Team4_UpdateStateAfterWithdrawalAudit() {
+	// overwrite if your agent need to update internal state at this stage.
+}
+func (mi *ExtendedAgent) Team4_UpdateStateAfterRoll() {
+	// overwrite if your agent need to update internal state at this stage.
+}
+func (mi *ExtendedAgent) Team4_UpdateStateTurnend() {
+	// overwrite if your agent need to update internal state at this stage.
+}
+func (mi *ExtendedAgent) Team4_UpdateStateStartTurn() {
+	// overwrite if your agent need to update internal state at this stage.
 }

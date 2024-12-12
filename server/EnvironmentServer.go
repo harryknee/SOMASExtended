@@ -88,6 +88,7 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 		auditResult := team.TeamAoA.GetContributionAuditResult(agentToAudit)
 
 		if auditResult {
+			cs.ApplyPunishment(team, agentToAudit)
 			if team.TeamAoAID == 2 {
 				if agentToAudit == team.TeamAoA.(*common.Team2AoA).GetLeader() {
 					cs.ElectNewLeader(team.TeamID)
@@ -96,7 +97,6 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 					cs.RemoveAgentFromTeam(agentToAudit)
 				}
 			}
-			cs.ApplyPunishment(team, agentToAudit)
 		}
 
 		for _, agentID := range team.Agents {
@@ -159,6 +159,8 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 		auditResult := team.TeamAoA.GetWithdrawalAuditResult(agentToAudit)
 
 		if auditResult {
+			cs.ApplyPunishment(team, agentToAudit)
+
 			if team.TeamAoAID == 2 {
 				if agentToAudit == team.TeamAoA.(*common.Team2AoA).GetLeader() {
 					cs.ElectNewLeader(team.TeamID)
@@ -167,7 +169,6 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 					cs.RemoveAgentFromTeam(agentToAudit)
 				}
 			}
-			cs.ApplyPunishment(team, agentToAudit)
 		}
 
 		for _, agentID := range team.Agents {
@@ -189,6 +190,7 @@ func (cs *EnvironmentServer) RunTurnTeam4(team *common.Team) {
 		// Override agent rolls for testing purposes
 		// agentList := []uuid.UUID{agentID}
 		// cs.OverrideAgentRolls(agentID, agentList, 1)
+		agent.Team4_UpdateStateStartTurn()
 		agent.StartRollingDice(agent)
 		agentActualContribution := agent.GetActualContribution(agent)
 		agentContributionsTotal += agentActualContribution
@@ -196,8 +198,10 @@ func (cs *EnvironmentServer) RunTurnTeam4(team *common.Team) {
 
 		agent.StateContributionToTeam(agent)
 		agentScore := agent.GetTrueScore()
+		agent.Team4_UpdateStateAfterContribution()
 		// Update audit result for this agent
 		team.TeamAoA.SetContributionAuditResult(agentID, agentScore, agentActualContribution, agentStatedContribution)
+
 		agent.SetTrueScore(agentScore - agentActualContribution)
 	}
 
@@ -238,6 +242,7 @@ func (cs *EnvironmentServer) RunTurnTeam4(team *common.Team) {
 	proposedWithdrawalMap := make(map[uuid.UUID]int)
 	for _, agentID := range team.Agents {
 		agent := cs.GetAgentMap()[agentID]
+		agent.Team4_UpdateStateAfterContributionAudit()
 		agentStatedWithdrawal := agent.Team4_GetProposedWithdrawal(agent)
 		proposedWithdrawalMap[agentID] = agentStatedWithdrawal
 		agent.Team4_StateProposalToTeam()
@@ -268,6 +273,7 @@ func (cs *EnvironmentServer) RunTurnTeam4(team *common.Team) {
 			agentActualWithdrawal = currentPool // Ensure withdrawal does not exceed available pool
 		}
 		agentStatedWithdrawal := agent.GetStatedWithdrawal(agent)
+		agent.Team4_UpdateStateAfterWithdrawal()
 
 		agentScore := agent.GetTrueScore()
 		// Update audit result for this agent
@@ -331,6 +337,7 @@ func (cs *EnvironmentServer) RunTurnTeam4(team *common.Team) {
 		team.SetCommonPool(currentPool + punishmentResult)
 		updatedPool := team.GetCommonPool()
 		log.Printf("Updated Common Pool: %d\n", updatedPool)
+		agent.Team4_UpdateStateAfterContributionAudit()
 
 	}
 	// ***************
@@ -341,6 +348,10 @@ func (cs *EnvironmentServer) RunTurnTeam4(team *common.Team) {
 			agent := cs.GetAgentMap()[agentID]
 			agent.SetAgentWithdrawalAuditResult(agentToAudit, auditResult)
 		}
+	}
+	for _, agentID := range team.Agents {
+		agent := cs.GetAgentMap()[agentID]
+		agent.Team4_UpdateStateTurnend()
 	}
 }
 
@@ -407,6 +418,8 @@ func (cs *EnvironmentServer) RunStartOfIteration(iteration int) {
 
 	cs.iteration = iteration
 	cs.allAgentsDead = false
+
+	cs.turn = 0
 
 	// record data
 	// cs.DataRecorder.RecordNewIteration()
@@ -609,8 +622,8 @@ func (cs *EnvironmentServer) allocateAoAs() {
 				team.TeamAoA = common.CreateTeam5AoA()
 				team.TeamAoAID = 5
 			case 6:
-				team.TeamAoA = common.CreateFixedAoA(1)
-				team.TeamAoAID = 0
+				team.TeamAoA = common.CreateTeam6AoA()
+				team.TeamAoAID = 6
 			default:
 				team.TeamAoA = common.CreateFixedAoA(1)
 				team.TeamAoAID = 0
@@ -1132,6 +1145,10 @@ func (cs *EnvironmentServer) ProcessAgentsLeaving() {
 
 func (cs *EnvironmentServer) ApplyPunishment(team *common.Team, agentToAudit uuid.UUID) {
 	agent := cs.GetAgentMap()[agentToAudit]
+
+	if agent == nil {
+		return
+	}
 
 	if agent.HasTeam() {
 		agentScore := agent.GetTrueScore()

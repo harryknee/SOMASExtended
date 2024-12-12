@@ -80,12 +80,19 @@ func (cs *EnvironmentServer) ElectNewLeader(teamId uuid.UUID) {
  * For the leader to override what a punished agent is rolling at that point
  */
 func (cs *EnvironmentServer) OverrideAgentRolls(agentId uuid.UUID, leaderId uuid.UUID) {
+	log.Printf("*****Override Agent Roll\n")
+
 	controlled := cs.GetAgentMap()[agentId]
 	leader := cs.GetAgentMap()[leaderId]
 
+	if controlled == nil {
+		log.Printf("Controlled agent with ID %v not found", agentId)
+		return
+	}
+
 	if leader == nil {
 		log.Printf("Leader with ID %v not found", leaderId)
-		cs.ElectNewLeader(agentId)
+		cs.ElectNewLeader(controlled.GetTeamID())
 		return
 	}
 
@@ -96,6 +103,8 @@ func (cs *EnvironmentServer) OverrideAgentRolls(agentId uuid.UUID, leaderId uuid
 	rollingComplete := false
 
 	for !rollingComplete {
+		log.Printf("*****Prev Roll: %d\n", prevRoll)
+		log.Printf("*****Accumulated score: %d\n", accumulatedScore)
 		stickDecision := leader.StickOrAgainFor(agentId, accumulatedScore, prevRoll)
 		if stickDecision > 0 {
 			log.Printf("%s decided to [STICK], score accumulated: %v", agentId, accumulatedScore)
@@ -107,7 +116,7 @@ func (cs *EnvironmentServer) OverrideAgentRolls(agentId uuid.UUID, leaderId uuid
 		}
 
 		currentRoll := generateScore()
-		log.Printf("%s rolled: %v\n this turn", agentId, currentRoll)
+		log.Printf("%s rolled: %v this turn\n", agentId, currentRoll)
 		if currentRoll <= prevRoll {
 			// Gone bust, so reset the accumulated score and break out of the loop
 			accumulatedScore = 0

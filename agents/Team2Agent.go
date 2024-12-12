@@ -28,8 +28,8 @@ type Team2Agent struct {
 // constructor for team2agent - initialised as all followers
 func Team2_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent], agentConfig AgentConfig) *Team2Agent {
 	extendedAgent := GetBaseAgents(funcs, agentConfig)
-	extendedAgent.TrueSomasTeamID = 2   // Our true team ID
-	extendedAgent.AoARanking = []int{2} // just ours for now. TODO: CHANGE WHEN WE KNOW OTHER AOAs
+	extendedAgent.TrueSomasTeamID = 2                  // Our true team ID
+	extendedAgent.AoARanking = []int{2, 1, 3, 4, 5, 6} // just ours for now. TODO: CHANGE WHEN WE KNOW OTHER AOAs
 
 	return &Team2Agent{
 		ExtendedAgent:      extendedAgent,
@@ -311,10 +311,6 @@ func (t2a *Team2Agent) VoteOnAgentEntry(candidateID uuid.UUID) bool {
 
 // ---------- DECISION TO STICK  ----------
 
-// func (t2a *Team2Agent) StickOrAgainFor(agentId uuid.UUID, accumulatedScore int, prevRoll int) int {
-// 	return 0
-// }
-
 // Function to retrieve ID and Score of all dead agents in team
 func (t2a *Team2Agent) GetDeadTeammates() []struct {
 	AgentID uuid.UUID
@@ -444,6 +440,38 @@ func (t2a *Team2Agent) StickOrAgain(accumulatedScore int, prevRoll int) bool {
 	return true // Stick
 }
 
+func (t2a *Team2Agent) StickOrAgainFor(agentId uuid.UUID, accumulatedScore int, prevRoll int) int {
+
+	log.Printf("StickOrAgainFor called with agentId: %v, accumulatedScore: %d, prevRoll: %d", agentId, accumulatedScore, prevRoll)
+
+	if prevRoll == -1 {
+		prevRoll = 3
+	}
+
+	log.Printf("*****Total Score before deciding to re-roll or stick: %d\n", accumulatedScore)
+
+	log.Printf("*****Prev Roll: %d\n", prevRoll)
+
+	// Determine cumulative probability of improvement
+	cumulativeProbability := t2a.probabilityOfImprovement(prevRoll)
+	log.Printf("*****Cumulative Probability of Improvement: %.2f\n", cumulativeProbability)
+
+	log.Printf("*****Rank is: %t\n", t2a.rank) // true is leader, false is citizen
+
+	// Determine agent risk tolerance (lower riskTolerance value indicates more risky, higher indicates more risk averse)
+	riskTolerance := t2a.DetermineRiskTolerance(accumulatedScore)
+	log.Printf("*****Risk Tolerance: %.2f\n", riskTolerance)
+
+	// Leader is very risky and has a fixed riskTolerance of 0.8
+	riskTolerance = 0.8
+	threshold := float64(prevRoll) * (1.0 - riskTolerance)
+	if (cumulativeProbability * 18) > threshold {
+		log.Printf("*****Decision: Re-roll\n")
+		return 0 // Re-roll
+	}
+	return 1 // Stick
+}
+
 // Function guesses threshold based on highest dead agent score and current agent score
 // Current agent score must be before contribution or withdrawal to common pool
 // This ensures current agent (which is alive) has score > threshold in current iteration
@@ -517,7 +545,7 @@ func (t2a *Team2Agent) GetActualContribution(instance common.IExtendedAgent) int
 
 		// if we have less than the expected, just contribute whats left
 		if t2a.GetTrueScore() < aoaExpectedContribution {
-			return t2a.GetTrueScore() // give all score if less than expected
+			return int(0.7 * float64(aoaExpectedContribution)) // give all score if less than expected
 		}
 
 		// otherwise, look at the average team trust score and base contribution decision on this.

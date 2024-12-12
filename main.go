@@ -4,17 +4,34 @@ import (
 	"io"
 	"log"
 	"os"
+	"strconv"
 	"time"
-
-	"github.com/google/uuid"
-
-	baseServer "github.com/MattSScott/basePlatformSOMAS/v2/pkg/server"
 
 	agents "github.com/ADimoska/SOMASExtended/agents"
 	common "github.com/ADimoska/SOMASExtended/common"
 	gameRecorder "github.com/ADimoska/SOMASExtended/gameRecorder"
 	envServer "github.com/ADimoska/SOMASExtended/server"
+	baseServer "github.com/MattSScott/basePlatformSOMAS/v2/pkg/server"
+	"github.com/google/uuid"
 )
+
+func createServer() *envServer.EnvironmentServer {
+	// create a fresh server
+	serv := &envServer.EnvironmentServer{
+		// note: the zero turn is used for team forming
+		BaseServer: baseServer.CreateBaseServer[common.IExtendedAgent](
+			3,                   //  iterations
+			100,                 //  turns per iteration
+			50*time.Millisecond, //  max duration
+			10),                 //  message bandwidth
+		Teams: make(map[uuid.UUID]*common.Team),
+	}
+	serv.Init(
+		3, // turns to apply threshold once
+	)
+	serv.SetGameRunner(serv)
+	return serv
+}
 
 func main() {
 	// Create logs directory if it doesn't exist
@@ -48,53 +65,90 @@ func main() {
 	}
 
 	team4_evil := agents.Team4Config{
-		Chaoticness: 2, // from 1 to 3, 3 being most chaotic
+		IsRandom:    false,
+		Chaoticness: 1, // from 1 to 3, 3 being most chaotic
+		Evilness:    3, // from 1 to 3, 3 being most evil
+	}
+
+	team4_good := agents.Team4Config{
+		IsRandom:    false,
+		Chaoticness: 1, // from 1 to 3, 3 being most chaotic
+		Evilness:    1, // from 1 to 3, 3 being most evil
+	}
+
+	team4_neutral := agents.Team4Config{
+		IsRandom:    false,
+		Chaoticness: 1, // from 1 to 3, 3 being most chaotic
 		Evilness:    2, // from 1 to 3, 3 being most evil
 	}
 
-	// team4_lawful := agents.Team4Config{
-	// 	Chaoticness: 1, // from 1 to 3, 3 being most chaotic
-	// 	Evilness:    1, // from 1 to 3, 3 being most evil
-	// }
+	const numAgents int = 20
 
-	serv := &envServer.EnvironmentServer{
-		// note: the zero turn is used for team forming
-		BaseServer: baseServer.CreateBaseServer[common.IExtendedAgent](
-			2,                   //  iterations
-			100,                 //  turns per iteration
-			50*time.Millisecond, //  max duration
-			10),                 //  message bandwidth
-		Teams: make(map[uuid.UUID]*common.Team),
-	}
-	serv.Init(
-		3, // turns to apply threshold once
-	)
-	serv.SetGameRunner(serv)
+	// store agent population for all experiments
+	servers := make([]*envServer.EnvironmentServer, 0)
+	agentPopulations := make([][]common.IExtendedAgent, 0)
 
-	const numAgents int = 10
+	// experiment 0, baseline lawful neutral
+	serv := createServer()
+	servers = append(servers, serv)
 
 	agentPopulation := []common.IExtendedAgent{}
-	for i := 0; i < numAgents; i++ {
-		agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig, team4_evil))
-		// agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig, team4_lawful))
-		agentPopulation = append(agentPopulation, agents.Create_Team1Agent(serv, agentConfig))
-		// agentPopulation = append(agentPopulation, agents.GetBaseAgents(serv, agentConfig))
-		// Add other teams' agents here
+	for i := 0; i < 20; i++ {
+		agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig, team4_neutral))
+	}
+	agentPopulations = append(agentPopulations, agentPopulation)
+
+	// experiment 1-11, evil vs good
+	// prop increases in 10% increments
+	for evilProp := 0; evilProp < 11; evilProp++ {
+		// create a fresh server
+		serv := createServer()
+		servers = append(servers, serv)
+
+		agentPopulation := []common.IExtendedAgent{}
+		// create agents
+		numAgentsEvil := int(numAgents * evilProp / 10)
+		for i := 0; i < numAgentsEvil; i++ {
+			agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig, team4_evil))
+		}
+		for i := 0; i < numAgents-numAgentsEvil; i++ {
+			agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig, team4_good))
+		}
+		agentPopulations = append(agentPopulations, agentPopulation)
 	}
 
-	for i, agent := range agentPopulation {
-		agent.SetName(i)
-		serv.AddAgent(agent)
+	// for i := 0; i < numAgents-2; i++ {
+	// 	// Add mostly honest agents
+	// 	agentPopulation = append(agentPopulation, agents.Create_Team1Agent(serv, agentConfig, agents.Honest))
+	// }
+
+	// // Add a short term and long term cheater agent from team 1
+	// team1ShortTermCheater := agents.Create_Team1Agent(serv, agentConfig, agents.CheatShortTerm)
+	// log.Printf("Team1 %v is of type CheatShortTerm", team1ShortTermCheater.GetID())
+	// agentPopulation = append(agentPopulation, team1ShortTermCheater)
+
+	// team1LongTermCheater := agents.Create_Team1Agent(serv, agentConfig, agents.CheatLongTerm)
+	// log.Printf("Team1 %v is of type CheatLongTerm", team1LongTermCheater.GetID())
+	// agentPopulation = append(agentPopulation, team1LongTermCheater)
+
+	for experiment := 0; experiment < len(agentPopulations); experiment++ {
+		// add agents to server
+		serv := servers[experiment]
+		agentPopulation := agentPopulations[experiment]
+		for i, agent := range agentPopulation {
+			agent.SetName(i)
+			serv.AddAgent(agent)
+		}
+
+		//serv.ReportMessagingDiagnostics()
+		serv.Start()
+
+		// custom function to see agent result
+		serv.LogAgentStatus()
+		serv.LogTeamStatus()
+
+		// record data
+		// serv.DataRecorder.GamePlaybackSummary()
+		gameRecorder.ExportToCSV(serv.DataRecorder, "visualization_output/csv_data/experiment_"+strconv.Itoa(experiment))
 	}
-
-	//serv.ReportMessagingDiagnostics()
-	serv.Start()
-
-	// custom function to see agent result
-	serv.LogAgentStatus()
-	serv.LogTeamStatus()
-
-	// record data
-	serv.DataRecorder.GamePlaybackSummary()
-	gameRecorder.ExportToCSV(serv.DataRecorder, "visualization_output/csv_data")
 }
